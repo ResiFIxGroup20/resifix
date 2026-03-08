@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect, url_for
 from routes.auth import auth
 from routes.resident import resident
 from routes.admin import admin
@@ -15,6 +15,10 @@ app.register_blueprint(technician)
 
 with app.app_context():
     init_db()
+
+@app.route('/')
+def index():
+    return redirect(url_for('auth.login'))
 
 if __name__ == '__main__':
     app.run(debug=True)
