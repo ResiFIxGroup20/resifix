@@ -86,7 +86,7 @@ CREATE TABLE IF NOT EXISTS images (
 );
 
 
--- ============================================
+
 -- REFERENCE VALUES
 -- Roles:    resident | technician | admin
 -- Status:   pending | assigned | in_progress | resolved | closed | cancelled
@@ -94,4 +94,4 @@ CREATE TABLE IF NOT EXISTS images (
 -- Type:     in_app | email | sms
 
 -- also final notes keep the comments in code as it helps us locate where to fix errors 
--- ============================================
+
