@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}Login — ResiFix{% endblock %}
+
+{% block auth_content %}
+<div class="auth-page">
+
+  <!-- Left illustration panel -->
+  <div class="auth-illustration">
+    <div class="illustration-content">
+      <span class="big-icon"><i class="bi bi-wrench-adjustable-circle-fill"></i></span>
+      <h1 class="illustration-title">ResiFix</h1>
+      <p class="illustration-sub">Hostel Maintenance Request System</p>
+      <ul class="feature-list">
+        <li><i class="bi bi-check-circle-fill"></i> Submit & track repair requests</li>
+        <li><i class="bi bi-check-circle-fill"></i> Real-time status updates</li>
+        <li><i class="bi bi-check-circle-fill"></i> Priority-based scheduling</li>
+        <li><i class="bi bi-check-circle-fill"></i> Photo uploads for issues</li>
+        <li><i class="bi bi-check-circle-fill"></i> Rate technician service</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right form panel -->
+  <div class="auth-form-panel">
+    <div class="auth-form-inner">
+
+      <div class="auth-logo-sm">
+        <i class="bi bi-wrench-adjustable-circle-fill"></i> ResiFix
+      </div>
+
+      <h2 class="auth-heading">Welcome back</h2>
+      <p class="auth-sub">Sign in to your account to continue</p>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} mb-3">
+              <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}x-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}-fill me-2"></i>
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('auth.login') }}" novalidate>
+
+        <!-- Username -->
+        <div class="form-group-custom">
+          <label class="form-label-custom">Username</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-person-fill input-icon"></i>
+            <input type="text" name="username" class="form-control-custom"
+                   placeholder="your_username" required autocomplete="username"/>
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="form-group-custom">
+          <label class="form-label-custom">Password</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-lock-fill input-icon"></i>
+            <input type="password" id="password" name="password" class="form-control-custom"
+                   placeholder="••••••••" required autocomplete="current-password"/>
+            <button type="button" class="password-toggle" onclick="togglePassword('password', 'pw-eye')">
+              <i class="bi bi-eye" id="pw-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-auth">
+          <span>Sign In</span>
+          <i class="bi bi-arrow-right-circle-fill"></i>
+        </button>
+      </form>
+
+      <p class="auth-switch">
+        Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a>
+      </p>
+
+      <!-- Demo credentials(remove when in production) -->
+      <div class="demo-credentials">
+        <div class="demo-title">
+          <i class="bi bi-info-circle"></i> Demo Credentials (click to fill)
+        </div>
+        <div class="demo-grid">
+          <div class="demo-item" onclick="fillCreds('admin1', 'admin123')">
+            <span class="demo-role admin">Admin</span>
+            <span class="demo-user">admin1 / admin123</span>
+          </div>
+          <div class="demo-item" onclick="fillCreds('tech1', 'tech123')">
+            <span class="demo-role tech">Tech</span>
+            <span class="demo-user">tech1 / tech123</span>
+          </div>
+          <div class="demo-item" onclick="fillCreds('student1', 'student123')">
+            <span class="demo-role resident">Student</span>
+            <span class="demo-user">student1 / student123</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function fillCreds(u, p) {
+    document.querySelector('[name="username"]').value = u;
+    document.getElementById('password').value = p;
+  }
+
+  function togglePassword(inputId, eyeId) {
+    const input = document.getElementById(inputId);
+    const eye   = document.getElementById(eyeId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      eye.className = 'bi bi-eye-slash';
+    } else {
+      input.type = 'password';
+      eye.className = 'bi bi-eye';
+    }
+  }
+</script>
+{% endblock %}

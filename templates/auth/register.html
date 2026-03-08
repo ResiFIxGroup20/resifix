@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% block title %}Register — ResiFix{% endblock %}
+
+{% block auth_content %}
+<div class="auth-page">
+
+  <!-- Left illustration panel -->
+  <div class="auth-illustration">
+    <div class="illustration-content">
+      <span class="big-icon"><i class="bi bi-person-plus-fill"></i></span>
+      <h1 class="illustration-title">Join ResiFix</h1>
+      <p class="illustration-sub">Create your account to get started with the maintenance request system.</p>
+      <ul class="feature-list">
+        <li><i class="bi bi-check-circle-fill"></i> Students — report and track room issues</li>
+        <li><i class="bi bi-check-circle-fill"></i> Technicians — manage assigned repairs</li>
+        <li><i class="bi bi-check-circle-fill"></i> Upload photos of the problem</li>
+        <li><i class="bi bi-check-circle-fill"></i> Get notified on every update</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Right form panel -->
+  <div class="auth-form-panel">
+    <div class="auth-form-inner" style="max-width: 460px;">
+
+      <div class="auth-logo-sm">
+        <i class="bi bi-wrench-adjustable-circle-fill"></i> ResiFix
+      </div>
+
+      <h2 class="auth-heading">Create Account</h2>
+      <p class="auth-sub">Fill in your details to get started</p>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} mb-3">
+              <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}x-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}-fill me-2"></i>
+              {{ message }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="{{ url_for('auth.register') }}" novalidate id="register-form">
+
+        <!-- ── STEP 1: Role Selection ───────────────────────────────────── -->
+        <div class="form-group-custom">
+          <label class="form-label-custom">I am registering as *</label>
+          <div class="role-selector">
+
+            <label class="role-card" id="card-resident">
+              <input type="radio" name="role" value="resident" id="role-resident" required/>
+              <div class="role-card-inner">
+                <i class="bi bi-mortarboard-fill role-card-icon"></i>
+                <div class="role-card-title">Student</div>
+                <div class="role-card-sub">Report & track room maintenance issues</div>
+              </div>
+            </label>
+
+            <label class="role-card" id="card-technician">
+              <input type="radio" name="role" value="technician" id="role-technician" required/>
+              <div class="role-card-inner">
+                <i class="bi bi-tools role-card-icon"></i>
+                <div class="role-card-title">Technician</div>
+                <div class="role-card-sub">Manage and resolve assigned repair requests</div>
+              </div>
+            </label>
+
+          </div>
+        </div>
+
+        <!-- ── STEP 2: Common Fields ───────────────────────────────────── -->
+        <div class="form-group-custom">
+          <label class="form-label-custom">Full Name *</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-person-badge-fill input-icon"></i>
+            <input type="text" name="full_name" class="form-control-custom"
+                   placeholder="Your full name" required minlength="2"/>
+          </div>
+        </div>
+
+        <div class="form-group-custom">
+          <label class="form-label-custom">Username *</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-at input-icon"></i>
+            <input type="text" name="username" class="form-control-custom"
+                   placeholder="Choose a username" required minlength="3"/>
+          </div>
+          <small class="text-muted" style="font-size:11px; margin-top:4px; display:block;">
+            Tip: Students can use their student number as username
+          </small>
+        </div>
+
+        <div class="form-group-custom">
+          <label class="form-label-custom">Email Address *</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-envelope-fill input-icon"></i>
+            <input type="email" name="email" class="form-control-custom"
+                   placeholder="you@example.com" required/>
+          </div>
+        </div>
+
+        <!-- ── STEP 3: Student-Only Fields (hidden by default) ────────── -->
+        <div id="student-fields" style="display:none;">
+          <div class="student-fields-banner">
+            <i class="bi bi-door-closed-fill"></i>
+            Student details
+          </div>
+
+          <div class="form-group-custom">
+            <label class="form-label-custom">Room Number *</label>
+            <div class="input-icon-wrap">
+              <i class="bi bi-door-closed-fill input-icon"></i>
+              <input type="text" name="room_number" id="room_number" class="form-control-custom"
+                     placeholder="e.g. A101"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── STEP 4: Password ────────────────────────────────────────── -->
+        <div class="form-group-custom">
+          <label class="form-label-custom">Password *</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-lock-fill input-icon"></i>
+            <input type="password" id="reg-password" name="password" class="form-control-custom"
+                   placeholder="Min 8 characters" required minlength="8"/>
+            <button type="button" class="password-toggle"
+                    onclick="togglePassword('reg-password', 'pw1-eye')">
+              <i class="bi bi-eye" id="pw1-eye"></i>
+            </button>
+          </div>
+          <!-- Password strength bar -->
+          <div class="password-strength mt-2">
+            <div class="strength-fill" id="strength-fill"></div>
+          </div>
+          <small class="text-muted" id="strength-label" style="font-size:11px;"></small>
+        </div>
+
+        <div class="form-group-custom">
+          <label class="form-label-custom">Confirm Password *</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-lock-fill input-icon"></i>
+            <input type="password" id="reg-confirm" name="confirm_password" class="form-control-custom"
+                   placeholder="Repeat your password" required minlength="8"/>
+            <button type="button" class="password-toggle"
+                    onclick="togglePassword('reg-confirm', 'pw2-eye')">
+              <i class="bi bi-eye" id="pw2-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-auth">
+          <span>Create Account</span>
+          <i class="bi bi-person-check-fill"></i>
+        </button>
+
+      </form>
+
+      <p class="auth-switch">
+        Already have an account? <a href="{{ url_for('auth.login') }}">Sign in here</a>
+      </p>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // ── Role card selection ────────────────────────────────────────────────────
+  const radioResident   = document.getElementById('role-resident');
+  const radioTechnician = document.getElementById('role-technician');
+  const cardResident    = document.getElementById('card-resident');
+  const cardTechnician  = document.getElementById('card-technician');
+  const studentFields   = document.getElementById('student-fields');
+  const roomInput       = document.getElementById('room_number');
+
+  function updateRoleUI() {
+    if (radioResident.checked) {
+      cardResident.classList.add('selected');
+      cardTechnician.classList.remove('selected');
+      studentFields.style.display = 'block';
+      roomInput.required = true;
+    } else if (radioTechnician.checked) {
+      cardTechnician.classList.add('selected');
+      cardResident.classList.remove('selected');
+      studentFields.style.display = 'none';
+      roomInput.required = false;
+      roomInput.value = '';
+    }
+  }
+
+  radioResident.addEventListener('change', updateRoleUI);
+  radioTechnician.addEventListener('change', updateRoleUI);
+
+  // ── Password toggle ────────────────────────────────────────────────────────
+  function togglePassword(inputId, eyeId) {
+    const input = document.getElementById(inputId);
+    const eye   = document.getElementById(eyeId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      eye.className = 'bi bi-eye-slash';
+    } else {
+      input.type = 'password';
+      eye.className = 'bi bi-eye';
+    }
+  }
+
+  // ── Password strength meter ────────────────────────────────────────────────
+  const pwInput = document.getElementById('reg-password');
+  const fill    = document.getElementById('strength-fill');
+  const label   = document.getElementById('strength-label');
+
+  pwInput.addEventListener('input', () => {
+    const val = pwInput.value;
+    let score = 0;
+    if (val.length >= 8)           score++;
+    if (/[A-Z]/.test(val))         score++;
+    if (/[0-9]/.test(val))         score++;
+    if (/[^a-zA-Z0-9]/.test(val))  score++;
+    const levels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
+    const colors = ['', '#ef4444', '#f59e0b', '#22c55e', '#16a34a'];
+    fill.style.width      = (score * 25) + '%';
+    fill.style.background = colors[score];
+    label.textContent     = score > 0 ? 'Strength: ' + levels[score] : '';
+  });
+
+  // ── Confirm password match check ──────────────────────────────────────────
+  document.getElementById('register-form').addEventListener('submit', function(e) {
+    const confirm = document.getElementById('reg-confirm');
+    if (pwInput.value !== confirm.value) {
+      e.preventDefault();
+      confirm.setCustomValidity('Passwords do not match.');
+      confirm.reportValidity();
+    } else {
+      confirm.setCustomValidity('');
+    }
+
+    // Make sure a role was selected
+    if (!radioResident.checked && !radioTechnician.checked) {
+      e.preventDefault();
+      alert('Please select whether you are a Student or Technician.');
+    }
+  });
+</script>
+
+<!-- Role card styles (inline so auth team doesn't need to edit shared CSS) -->
+<style>
+  .role-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  .role-card {
+    cursor: pointer;
+    display: block;
+  }
+
+  .role-card input[type="radio"] {
+    display: none;
+  }
+
+  .role-card-inner {
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 18px 14px;
+    text-align: center;
+    background: #121a2e;
+    transition: all 0.2s ease;
+  }
+
+  .role-card-inner:hover {
+    border-color: rgba(37,99,235,0.4);
+    background: rgba(37,99,235,0.05);
+  }
+
+  .role-card.selected .role-card-inner {
+    border-color: #2563eb;
+    background: rgba(37,99,235,0.12);
+    box-shadow: 0 0 0 1px #2563eb;
+  }
+
+  .role-card-icon {
+    font-size: 26px;
+    color: #60a5fa;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .role-card.selected .role-card-icon {
+    color: #2563eb;
+  }
+
+  .role-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 4px;
+  }
+
+  .role-card-sub {
+    font-size: 11px;
+    color: #7a8fad;
+    line-height: 1.4;
+  }
+
+  .student-fields-banner {
+    background: rgba(37,99,235,0.08);
+    border: 1px solid rgba(37,99,235,0.2);
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #60a5fa;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+</style>
+{% endblock %}

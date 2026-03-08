@@ -67,6 +67,7 @@ update_user(user_id, full_name, email, room_number)
 set_user_active(user_id, is_active)
 ```
 
+
 ### REQUEST FUNCTIONS
 ```python
 # Create a new maintenance request

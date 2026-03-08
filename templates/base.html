@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}ResiFix — Maintenance System{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet"/>
+</head>
+<body>
+
+{% if session.get('user_id') %}
+<!-- Sidebar  -->
+<div class="sidebar" id="sidebar">
+
+  <div class="sidebar-brand">
+    <span class="brand-icon"><i class="bi bi-wrench-adjustable-circle-fill"></i></span>
+    <span class="brand-text">ResiFix</span>
+  </div>
+
+  <nav class="sidebar-nav">
+
+    {% if session.get('role') == 'admin' %}
+    <!-- Admin Navigation -->
+    <a href="{{ url_for('admin.admin_dashboard') }}"
+       class="nav-link {% if request.endpoint == 'admin.admin_dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2-fill"></i> Dashboard
+    </a>
+    <a href="{{ url_for('admin.admin_dashboard') }}?status=pending"
+       class="nav-link">
+      <i class="bi bi-clock-history"></i> Pending
+    </a>
+    <a href="{{ url_for('admin.admin_dashboard') }}?priority=critical"
+       class="nav-link">
+      <i class="bi bi-exclamation-triangle-fill"></i> Critical
+    </a>
+    <div class="nav-divider">Management</div>
+    <a href="{{ url_for('admin.manage_users') }}"
+       class="nav-link {% if request.endpoint == 'admin.manage_users' %}active{% endif %}">
+      <i class="bi bi-people-fill"></i> Users
+    </a>
+
+    {% elif session.get('role') == 'technician' %}
+    <!-- Technician Navigation -->
+    <a href="{{ url_for('technician.technician_dashboard') }}"
+       class="nav-link {% if request.endpoint == 'technician.technician_dashboard' %}active{% endif %}">
+      <i class="bi bi-grid-1x2-fill"></i> My Tasks
+    </a>
+    <a href="{{ url_for('technician.technician_dashboard') }}?status=assigned"
+       class="nav-link">
+      <i class="bi bi-clock-history"></i> Assigned
+    </a>
+    <a href="{{ url_for('technician.technician_dashboard') }}?status=in_progress"
+       class="nav-link">
+      <i class="bi bi-tools"></i> In Progress
+    </a>
+
+    {% else %}
+    <!-- Resident Navigation -->
+    <a href="{{ url_for('resident.dashboard') }}"
+       class="nav-link {% if request.endpoint == 'resident.dashboard' %}active{% endif %}">
+      <i class="bi bi-house-fill"></i> My Requests
+    </a>
+    <a href="{{ url_for('resident.new_request') }}"
+       class="nav-link {% if request.endpoint == 'resident.new_request' %}active{% endif %}">
+      <i class="bi bi-plus-circle-fill"></i> New Request
+    </a>
+    <a href="{{ url_for('resident.notifications') }}"
+       class="nav-link {% if request.endpoint == 'resident.notifications' %}active{% endif %}">
+      <i class="bi bi-bell-fill"></i> Notifications
+    </a>
+    {% endif %}
+
+  </nav>
+
+  <!-- Sidebar footer — user info + logout -->
+  <div class="sidebar-footer">
+    <div class="user-info">
+      <div class="user-avatar">
+        {{ session.get('full_name', 'U')[0].upper() }}
+      </div>
+      <div class="user-details">
+        <div class="user-name">{{ session.get('full_name', 'User') }}</div>
+        <div class="user-role">{{ session.get('role', '').title() }}</div>
+      </div>
+    </div>
+    <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Logout">
+      <i class="bi bi-box-arrow-right"></i>
+    </a>
+  </div>
+
+</div>
+
+<!-- Main Content  -->
+<div class="main-content" id="main-content">
+
+  <!-- Top bar -->
+  <header class="topbar">
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+      <i class="bi bi-list"></i>
+    </button>
+    <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+    <div class="topbar-actions">
+      {% if session.get('role') == 'resident' %}
+      <a href="{{ url_for('resident.new_request') }}" class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-lg"></i> New Request
+      </a>
+      {% endif %}
+      {% if session.get('role') == 'resident' %}
+      <span class="room-badge">
+        <i class="bi bi-door-closed-fill"></i> Room {{ session.get('room_number', '—') }}
+      </span>
+      {% endif %}
+    </div>
+  </header>
+
+  <!-- Page content -->
+  <main class="content-area">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+              <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}x-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}-fill me-2"></i>
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+  </main>
+</div>
+
+{% else %}
+<!--  Auth Pages (no sidebar) -->
+<main>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div style="position:fixed;top:1rem;right:1rem;z-index:9999;min-width:300px;">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show shadow" role="alert">
+            <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}x-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}-fill me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+  {% block auth_content %}{% endblock %}
+</main>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  // Sidebar toggle for mobile
+  const toggle  = document.getElementById('sidebar-toggle');
+  const sidebar = document.getElementById('sidebar');
+  if (toggle && sidebar) {
+    toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
+  }
+</script>
+
+{% block scripts %}{% endblock %}
+
+</body>
+</html>
