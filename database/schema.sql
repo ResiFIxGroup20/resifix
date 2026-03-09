@@ -1,7 +1,4 @@
 
--- RESIFIX DATABASE SCHEMA i decided to just add this as its the start and just simple  generating 
--- futher instruction to be given by team lead 
--- Group 20 | DUT Faculty of Accounting & Informatics
 
 
 -- Users Table (students, admins, technicians)
