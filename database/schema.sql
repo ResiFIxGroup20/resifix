@@ -1,5 +1,5 @@
 
-
+ 
 
 -- Users Table (students, admins, technicians)
 CREATE TABLE IF NOT EXISTS users (
