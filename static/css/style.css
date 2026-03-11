@@ -3,9 +3,9 @@ the part of the css that corresponds to your part) */
 
 
 :root {
-  --bg:           #080b12;
-  --bg-2:         #0d1220;
-  --bg-3:         #121a2e;
+  --bg:           #0b101b;
+  --bg-2:         #101729;
+  --bg-3:         #17233f;
   --border:       rgba(255,255,255,0.07);
   --border-strong:rgba(255,255,255,0.13);
   --text:         #ffffff;
