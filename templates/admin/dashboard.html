@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard — ResiFix{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
+
+
+{% block content %}
+
+<!-- ── Stat Cards ─────────────────────────────────────────────────────── -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="stat-card">
+      <div class="stat-icon text-primary"><i class="bi bi-clipboard2-fill"></i></div>
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total Requests</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <a href="{{ url_for('admin.admin_dashboard') }}?status=pending" class="text-decoration-none">
+      <div class="stat-card stat-card--warning">
+        <div class="stat-icon text-warning"><i class="bi bi-clock-history"></i></div>
+        <div class="stat-value">{{ stats.pending }}</div>
+        <div class="stat-label">Pending</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <a href="{{ url_for('admin.admin_dashboard') }}?status=in_progress" class="text-decoration-none">
+      <div class="stat-card stat-card--info">
+        <div class="stat-icon text-info"><i class="bi bi-tools"></i></div>
+        <div class="stat-value">{{ stats.in_progress }}</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <a href="{{ url_for('admin.admin_dashboard') }}?status=resolved" class="text-decoration-none">
+      <div class="stat-card stat-card--success">
+        <div class="stat-icon text-success"><i class="bi bi-check-circle-fill"></i></div>
+        <div class="stat-value">{{ stats.resolved }}</div>
+        <div class="stat-label">Resolved</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <a href="{{ url_for('admin.admin_dashboard') }}?priority=critical" class="text-decoration-none">
+      <div class="stat-card stat-card--danger">
+        <div class="stat-icon text-danger"><i class="bi bi-exclamation-triangle-fill"></i></div>
+        <div class="stat-value">{{ stats.critical }}</div>
+        <div class="stat-label">Critical</div>
+      </div>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <a href="{{ url_for('admin.manage_users') }}" class="text-decoration-none">
+      <div class="stat-card">
+        <div class="stat-icon text-secondary"><i class="bi bi-people-fill"></i></div>
+        <div class="stat-value">{{ stats.total_users }}</div>
+        <div class="stat-label">Total Users</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<!-- ── Search + Filter Bar ─────────────────────────────────────────────── -->
+<div class="card mb-3">
+  <div class="card-body py-2">
+
+    <!-- Room number search -->
+    <form method="GET" action="{{ url_for('admin.admin_dashboard') }}" class="d-flex gap-2 mb-2">
+      <!-- Preserve active filters when searching -->
+      {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
+      {% if priority_filter %}<input type="hidden" name="priority" value="{{ priority_filter }}">{% endif %}
+      <input type="hidden" name="page" value="1">
+      <div class="input-group input-group-sm" style="max-width:280px;">
+        <span class="input-group-text"><i class="bi bi-door-closed"></i></span>
+        <input type="text" name="room" class="form-control"
+               placeholder="Search by room number…"
+               value="{{ room_search }}">
+        {% if room_search %}
+        <a href="{{ url_for('admin.admin_dashboard') }}{% if status_filter %}?status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}"
+           class="btn btn-outline-secondary btn-sm" title="Clear room search">
+          <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+        <button class="btn btn-primary btn-sm" type="submit">Search</button>
+      </div>
+    </form>
+
+    <!-- Status + Priority filter pills -->
+    <div class="d-flex flex-wrap gap-2 align-items-center">
+      <span class="text-muted small fw-semibold me-1">Filter:</span>
+      {% set statuses = ['pending','assigned','in_progress','resolved','closed','cancelled'] %}
+      {% for s in statuses %}
+      <a href="{{ url_for('admin.admin_dashboard') }}?status={{ s }}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if room_search %}&room={{ room_search }}{% endif %}&page=1"
+         class="badge rounded-pill text-decoration-none {% if status_filter == s %}bg-primary{% else %}bg-light text-dark border{% endif %}">
+        {{ s | replace('_', ' ') | title }}
+      </a>
+      {% endfor %}
+      {% for p in ['low','medium','high','critical'] %}
+      <a href="{{ url_for('admin.admin_dashboard') }}?priority={{ p }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if room_search %}&room={{ room_search }}{% endif %}&page=1"
+         class="badge rounded-pill text-decoration-none {% if priority_filter == p %}bg-danger{% else %}bg-light text-dark border{% endif %}">
+        {{ p | title }}
+      </a>
+      {% endfor %}
+      {% if status_filter or priority_filter or room_search %}
+      <a href="{{ url_for('admin.admin_dashboard') }}" class="badge rounded-pill bg-secondary text-decoration-none">
+        <i class="bi bi-x-lg"></i> Clear All
+      </a>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Requests Table ─────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">
+      Maintenance Requests
+      {% if status_filter or priority_filter or room_search %}
+        <span class="badge bg-primary ms-1">Filtered</span>
+      {% endif %}
+    </span>
+    <span class="text-muted small">
+      {{ total_results }} result{{ 's' if total_results != 1 }}
+      &nbsp;·&nbsp; Page {{ page }} of {{ total_pages }}
+    </span>
+  </div>
+
+  {% if requests %}
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Ticket</th>
+          <th>Title</th>
+          <th>Room</th>
+          <th>Category</th>
+          <th>Priority</th>
+          <th>Status</th>
+          <th>Assigned To</th>
+          <th>Submitted</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in requests %}
+        <tr>
+          <td><span class="font-monospace small text-muted">{{ r.ticket_no }}</span></td>
+          <td>
+            {{ r.title }}
+            {% if r.is_worsening %}
+              <span class="badge bg-danger ms-1" title="Worsening"><i class="bi bi-arrow-up-right"></i></span>
+            {% endif %}
+          </td>
+          <td>{{ r.room_number or '—' }}</td>
+          <td>{{ r.category or '—' }}</td>
+          <td>
+            {% set p = r.priority %}
+            <span class="badge {% if p == 'critical' %}bg-danger{% elif p == 'high' %}bg-warning text-dark{% elif p == 'medium' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+              {{ p | title }}
+            </span>
+          </td>
+          <td>
+            {% set s = r.status %}
+            <span class="badge {% if s == 'pending' %}bg-warning text-dark{% elif s == 'assigned' %}bg-info text-dark{% elif s == 'in_progress' %}bg-primary{% elif s == 'resolved' %}bg-success{% elif s == 'closed' %}bg-secondary{% else %}bg-light text-dark border{% endif %}">
+              {{ s | replace('_', ' ') | title }}
+            </span>
+          </td>
+          <td>
+            {% if r.technician_id and r.technician_id in user_map %}
+              {{ user_map[r.technician_id]['full_name'] }}
+            {% else %}
+              <span class="text-muted">Unassigned</span>
+            {% endif %}
+          </td>
+          <td><span class="small text-muted">{{ r.submitted_at[:10] if r.submitted_at else '—' }}</span></td>
+          <td>
+            <a href="{{ url_for('admin.request_detail', request_id=r.id) }}" class="btn btn-sm btn-outline-primary">
+              <i class="bi bi-eye"></i>
+            </a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Pagination ──────────────────────────────────────────────────── -->
+  {% if total_pages > 1 %}
+  <div class="card-footer d-flex justify-content-between align-items-center">
+    <span class="text-muted small">
+      Showing {{ ((page - 1) * 10) + 1 }}–{{ [page * 10, total_results] | min }} of {{ total_results }}
+    </span>
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+
+        <!-- Previous -->
+        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+          <a class="page-link"
+             href="{{ url_for('admin.admin_dashboard', page=page-1, status=status_filter, priority=priority_filter, room=room_search) }}">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+
+        <!-- Page numbers -->
+        {% for p in range(1, total_pages + 1) %}
+          {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+              <a class="page-link"
+                 href="{{ url_for('admin.admin_dashboard', page=p, status=status_filter, priority=priority_filter, room=room_search) }}">
+                {{ p }}
+              </a>
+            </li>
+          {% elif p == page - 3 or p == page + 3 %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+
+        <!-- Next -->
+        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+          <a class="page-link"
+             href="{{ url_for('admin.admin_dashboard', page=page+1, status=status_filter, priority=priority_filter, room=room_search) }}">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="card-body text-center text-muted py-5">
+    <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+    No requests match the current filter.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

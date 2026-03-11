@@ -1395,3 +1395,45 @@ a:hover { color: var(--accent-hover); }
 .text-danger  { color: var(--danger)  !important; }
 .text-success { color: var(--success) !important; }
 .text-accent  { color: var(--accent)  !important; }
+
+/* ── Admin Stat Cards ─────────────────────────────────────────────────── */
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.1rem 1rem;
+  text-align: center;
+  transition: transform 0.15s, box-shadow 0.15s;
+  height: 100%;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.stat-icon {
+  font-size: 1.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text-primary);
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-top: 0.2rem;
+}
+
+.stat-card--warning { border-top: 3px solid var(--warning, #f59e0b); }
+.stat-card--info    { border-top: 3px solid var(--info,    #0ea5e9); }
+.stat-card--success { border-top: 3px solid var(--success, #10b981); }
+.stat-card--danger  { border-top: 3px solid var(--danger,  #ef4444); }

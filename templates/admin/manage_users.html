@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}Manage Users — ResiFix{% endblock %}
+{% block page_title %}Manage Users{% endblock %}
+
+
+{% block content %}
+
+<!-- ── Role filter tabs ────────────────────────────────────────────────── -->
+<ul class="nav nav-pills mb-3">
+  {% set tab_roles = [('', 'All', counts.all), ('resident', 'Residents', counts.resident),
+                      ('technician', 'Technicians', counts.technician), ('admin', 'Admins', counts.admin)] %}
+  {% for val, label, count in tab_roles %}
+  <li class="nav-item">
+    <a class="nav-link {% if role_filter == val %}active{% endif %}"
+       href="{{ url_for('admin.manage_users') }}{% if val %}?role={{ val }}{% endif %}{% if search %}&search={{ search }}{% endif %}&page=1">
+      {{ label }} <span class="badge bg-secondary ms-1">{{ count }}</span>
+    </a>
+  </li>
+  {% endfor %}
+</ul>
+
+<!-- ── Search bar (username / email) ─────────────────────────────────── -->
+<form method="GET" action="{{ url_for('admin.manage_users') }}" class="mb-3">
+  {% if role_filter %}<input type="hidden" name="role" value="{{ role_filter }}">{% endif %}
+  <input type="hidden" name="page" value="1">
+  <div class="input-group" style="max-width:380px;">
+    <span class="input-group-text"><i class="bi bi-search"></i></span>
+    <input type="text" name="search" class="form-control"
+           placeholder="Search by username or email…"
+           value="{{ search }}">
+    {% if search %}
+    <a href="{{ url_for('admin.manage_users') }}{% if role_filter %}?role={{ role_filter }}{% endif %}"
+       class="btn btn-outline-secondary" title="Clear search">
+      <i class="bi bi-x-lg"></i>
+    </a>
+    {% endif %}
+    <button class="btn btn-primary" type="submit">Search</button>
+  </div>
+  {% if search %}
+  <p class="text-muted small mt-1 mb-0">
+    Showing results for <strong>"{{ search }}"</strong>
+    — {{ total_results }} user{{ 's' if total_results != 1 }} found
+  </p>
+  {% endif %}
+</form>
+
+<!-- ── Users Table ────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">Users</span>
+    <span class="text-muted small">
+      {{ total_results }} result{{ 's' if total_results != 1 }}
+      &nbsp;·&nbsp; Page {{ page }} of {{ total_pages }}
+    </span>
+  </div>
+
+  {% if users %}
+  <div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>Full Name</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Room</th>
+          <th>Status</th>
+          <th>Joined</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr class="{% if not u.is_active %}table-secondary opacity-75{% endif %}">
+          <td class="text-muted small">{{ u.id }}</td>
+          <td><strong>{{ u.full_name }}</strong></td>
+          <td>
+            <!-- Highlight matched search term in username -->
+            {% if search and search in u.username.lower() %}
+              {% set idx = u.username.lower().find(search) %}
+              {{ u.username[:idx] }}<mark>{{ u.username[idx:idx+search|length] }}</mark>{{ u.username[idx+search|length:] }}
+            {% else %}
+              <span class="font-monospace small">@{{ u.username }}</span>
+            {% endif %}
+          </td>
+          <td class="small">
+            <!-- Highlight matched search term in email -->
+            {% if search and search in u.email.lower() %}
+              {% set idx = u.email.lower().find(search) %}
+              {{ u.email[:idx] }}<mark>{{ u.email[idx:idx+search|length] }}</mark>{{ u.email[idx+search|length:] }}
+            {% else %}
+              {{ u.email }}
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge {% if u.role == 'admin' %}bg-dark{% elif u.role == 'technician' %}bg-info text-dark{% else %}bg-secondary{% endif %}">
+              {{ u.role | title }}
+            </span>
+          </td>
+          <td>{{ u.room_number or '—' }}</td>
+          <td>
+            {% if u.is_active %}
+              <span class="badge bg-success">Active</span>
+            {% else %}
+              <span class="badge bg-danger">Inactive</span>
+            {% endif %}
+          </td>
+          <td class="small text-muted">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+          <td>
+            {% if u.id != session.user_id %}
+            <form method="POST"
+                  action="{{ url_for('admin.toggle_user', user_id=u.id) }}"
+                  onsubmit="return confirm('{{ 'Deactivate' if u.is_active else 'Activate' }} {{ u.full_name }}?')">
+              <button type="submit" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                {% if u.is_active %}
+                  <i class="bi bi-person-dash"></i> Deactivate
+                {% else %}
+                  <i class="bi bi-person-check"></i> Activate
+                {% endif %}
+              </button>
+            </form>
+            {% else %}
+              <span class="small text-muted">You</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Pagination ──────────────────────────────────────────────────── -->
+  {% if total_pages > 1 %}
+  <div class="card-footer d-flex justify-content-between align-items-center">
+    <span class="text-muted small">
+      Showing {{ ((page - 1) * 10) + 1 }}–{{ [page * 10, total_results] | min }} of {{ total_results }}
+    </span>
+    <nav>
+      <ul class="pagination pagination-sm mb-0">
+
+        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+          <a class="page-link"
+             href="{{ url_for('admin.manage_users', page=page-1, role=role_filter, search=search) }}">
+            <i class="bi bi-chevron-left"></i>
+          </a>
+        </li>
+
+        {% for p in range(1, total_pages + 1) %}
+          {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+            <li class="page-item {% if p == page %}active{% endif %}">
+              <a class="page-link"
+                 href="{{ url_for('admin.manage_users', page=p, role=role_filter, search=search) }}">
+                {{ p }}
+              </a>
+            </li>
+          {% elif p == page - 3 or p == page + 3 %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+
+        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+          <a class="page-link"
+             href="{{ url_for('admin.manage_users', page=page+1, role=role_filter, search=search) }}">
+            <i class="bi bi-chevron-right"></i>
+          </a>
+        </li>
+
+      </ul>
+    </nav>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="card-body text-center text-muted py-5">
+    <i class="bi bi-people fs-1 d-block mb-2"></i>
+    {% if search %}
+      No users found for <strong>"{{ search }}"</strong>.
+    {% else %}
+      No users found for this filter.
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ req.ticket_no }} — ResiFix{% endblock %}
+{% block page_title %}Request Detail{% endblock %}
+
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-sm btn-outline-secondary">
+    <i class="bi bi-arrow-left"></i> Back to Dashboard
+  </a>
+  <span class="font-monospace text-muted">{{ req.ticket_no }}</span>
+</div>
+
+<div class="row g-4">
+
+  <!-- Left: Request info -->
+  <div class="col-lg-8">
+
+    <div class="card mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-1">{{ req.title }}</h5>
+        <p class="text-muted small mb-3">
+          Room {{ req.room_number or '—' }} &nbsp;·&nbsp; {{ req.category or '—' }}
+          &nbsp;·&nbsp; Submitted {{ req.submitted_at[:10] if req.submitted_at else '—' }}
+          {% if req.is_worsening %}
+            &nbsp;·&nbsp; <span class="text-danger fw-semibold"><i class="bi bi-arrow-up-right"></i> Worsening</span>
+          {% endif %}
+        </p>
+
+        <!-- Priority + Status badges -->
+        <div class="mb-3">
+          {% set p = req.priority %}
+          <span class="badge
+            {% if p == 'critical' %}bg-danger
+            {% elif p == 'high' %}bg-warning text-dark
+            {% elif p == 'medium' %}bg-info text-dark
+            {% else %}bg-secondary{% endif %} me-2">
+            {{ p | title }} Priority
+          </span>
+
+          {% set s = req.status %}
+          <span class="badge
+            {% if s == 'pending' %}bg-warning text-dark
+            {% elif s == 'assigned' %}bg-info text-dark
+            {% elif s == 'in_progress' %}bg-primary
+            {% elif s == 'resolved' %}bg-success
+            {% elif s == 'closed' %}bg-secondary
+            {% else %}bg-light text-dark border{% endif %}">
+            {{ s | replace('_', ' ') | title }}
+          </span>
+        </div>
+
+        <p class="mb-0">{{ req.description or 'No description provided.' }}</p>
+      </div>
+    </div>
+
+    <!-- Resident info -->
+    <div class="card mb-4">
+      <div class="card-header fw-semibold">Submitted By</div>
+      <div class="card-body">
+        {% if req.resident_id in user_map %}
+          {% set resident = user_map[req.resident_id] %}
+          <strong>{{ resident.full_name }}</strong>
+          <span class="text-muted ms-2">@{{ resident.username }}</span><br>
+          <span class="small text-muted">{{ resident.email }}</span>
+        {% else %}
+          <span class="text-muted">Unknown resident</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Add internal note -->
+    <div class="card">
+      <div class="card-header fw-semibold">Add Internal Note</div>
+      <div class="card-body">
+        <form method="POST">
+          <input type="hidden" name="action" value="add_note">
+          <textarea name="note_body" class="form-control mb-2" rows="3"
+                    placeholder="Internal note (only visible to staff)..."></textarea>
+          <button type="submit" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-sticky-fill"></i> Add Note
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right: Actions -->
+  <div class="col-lg-4">
+
+    <!-- Assign Technician -->
+    <div class="card mb-3">
+      <div class="card-header fw-semibold">Assign Technician</div>
+      <div class="card-body">
+        {% if req.technician_id and req.technician_id in user_map %}
+          <p class="mb-2 small">
+            Currently assigned to:
+            <strong>{{ user_map[req.technician_id]['full_name'] }}</strong>
+          </p>
+        {% endif %}
+        <form method="POST">
+          <input type="hidden" name="action" value="assign">
+          <select name="technician_id" class="form-select form-select-sm mb-2">
+            <option value="">— Select Technician —</option>
+            {% for tech in technicians %}
+            <option value="{{ tech.id }}"
+              {% if req.technician_id == tech.id %}selected{% endif %}>
+              {{ tech.full_name }}
+            </option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-primary btn-sm w-100">
+            <i class="bi bi-person-check-fill"></i>
+            {% if req.technician_id %}Reassign{% else %}Assign{% endif %}
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Update Status -->
+    <div class="card">
+      <div class="card-header fw-semibold">Update Status</div>
+      <div class="card-body">
+        <form method="POST">
+          <input type="hidden" name="action" value="update_status">
+          <select name="status" class="form-select form-select-sm mb-2">
+            {% for s in ['pending','assigned','in_progress','resolved','closed','cancelled'] %}
+            <option value="{{ s }}" {% if req.status == s %}selected{% endif %}>
+              {{ s | replace('_', ' ') | title }}
+            </option>
+            {% endfor %}
+          </select>
+          <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+            <i class="bi bi-arrow-repeat"></i> Update Status
+          </button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
