@@ -19,9 +19,14 @@ auth = Blueprint('auth', __name__)
 
 @auth.route('/login', methods=['GET', 'POST'])
 def login():
-    # If already logged in redirect to correct dashboard
+    # If already logged in redirect to correct dashboard based on role
     if 'user_id' in session:
-        return redirect(url_for('resident.dashboard'))
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin.admin_dashboard'))
+        elif session.get('role') == 'technician':
+            return redirect(url_for('technician.technician_dashboard'))
+        else:
+            return redirect(url_for('resident.dashboard'))
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -72,9 +77,14 @@ def login():
 
 @auth.route('/register', methods=['GET', 'POST'])
 def register():
-    # If already logged in redirect away
+    # If already logged in redirect away based on role
     if 'user_id' in session:
-        return redirect(url_for('resident.dashboard'))
+        if session.get('role') == 'admin':
+            return redirect(url_for('admin.admin_dashboard'))
+        elif session.get('role') == 'technician':
+            return redirect(url_for('technician.technician_dashboard'))
+        else:
+            return redirect(url_for('resident.dashboard'))
 
     if request.method == 'POST':
         # Get form data
