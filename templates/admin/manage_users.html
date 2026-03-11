@@ -45,7 +45,7 @@
   {% endif %}
 </form>
 
-<!-- ── Users Table ────────────────────────────────────────────────────── -->
+<!-- Users Table -->
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <span class="fw-semibold">Users</span>
@@ -112,7 +112,8 @@
             {% if u.id != session.user_id %}
             <form method="POST"
                   action="{{ url_for('admin.toggle_user', user_id=u.id) }}"
-                  onsubmit="return confirm('{{ 'Deactivate' if u.is_active else 'Activate' }} {{ u.full_name }}?')">
+                  onsubmit="return confirm('{% if u.is_active %}Deactivate{% else %}Activate{% endif %} {{ u.full_name }}?')">
+
               <button type="submit" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
                 {% if u.is_active %}
                   <i class="bi bi-person-dash"></i> Deactivate
@@ -131,7 +132,7 @@
     </table>
   </div>
 
-  <!-- ── Pagination ──────────────────────────────────────────────────── -->
+  <!-- Pagination  -->
   {% if total_pages > 1 %}
   <div class="card-footer d-flex justify-content-between align-items-center">
     <span class="text-muted small">

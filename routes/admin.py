@@ -1,8 +1,4 @@
-# ============================================
-# RESIFIX — ADMIN ROUTES
-# routes/admin.py
 # Handles: dashboard, user management, request management
-# ============================================
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from database.db import (
@@ -25,7 +21,7 @@ admin = Blueprint('admin', __name__)
 PER_PAGE = 10
 
 
-# ── Access control decorator ────────────────────────────────────────────────
+#  Access control decorator 
 
 def admin_required(f):
     """Redirect non-admins away from admin pages."""
@@ -41,7 +37,7 @@ def admin_required(f):
     return decorated
 
 
-# ── Dashboard ────────────────────────────────────────────────────────────────
+#  Dashboard
 
 @admin.route('/admin')
 @admin_required
@@ -51,7 +47,7 @@ def admin_dashboard():
     all_requests = get_all_requests()
     all_users    = get_all_users()
 
-    # ── Filters ──────────────────────────────────────────────────────────────
+    #  Filters 
     status_filter   = request.args.get('status', '').strip()
     priority_filter = request.args.get('priority', '').strip()
     room_search     = request.args.get('room', '').strip().lower()   # room number search
@@ -66,14 +62,14 @@ def admin_dashboard():
     if room_search:
         filtered = [r for r in filtered if r['room_number'] and room_search in r['room_number'].lower()]
 
-    # ── Pagination ────────────────────────────────────────────────────────────
+    #  Pagination 
     total_results = len(filtered)
     total_pages   = max(1, math.ceil(total_results / PER_PAGE))
     page          = min(page, total_pages)   # clamp page to valid range
     offset        = (page - 1) * PER_PAGE
     paginated     = filtered[offset: offset + PER_PAGE]
 
-    # ── Stats (always on full unfiltered data) ────────────────────────────────
+    # Stats (always on full unfiltered data) 
     stats = {
         'total':       len(all_requests),
         'pending':     sum(1 for r in all_requests if r['status'] == 'pending'),
@@ -101,7 +97,7 @@ def admin_dashboard():
     )
 
 
-# ── Request Detail / Assign ───────────────────────────────────────────────────
+#  Request Detail / Assign 
 
 @admin.route('/admin/request/<int:request_id>', methods=['GET', 'POST'])
 @admin_required
@@ -159,7 +155,7 @@ def request_detail(request_id):
     )
 
 
-# ── Manage Users ──────────────────────────────────────────────────────────────
+#  Manage Users 
 
 @admin.route('/admin/users')
 @admin_required
@@ -191,7 +187,7 @@ def manage_users():
             if search in u['username'].lower() or search in u['email'].lower()
         ]
 
-    # ── Pagination ────────────────────────────────────────────────────────────
+    #  Pagination 
     total_results = len(filtered)
     total_pages   = max(1, math.ceil(total_results / PER_PAGE))
     page          = min(page, total_pages)
@@ -210,7 +206,7 @@ def manage_users():
     )
 
 
-# ── Toggle User Active ────────────────────────────────────────────────────────
+#  Toggle User Active 
 
 @admin.route('/admin/users/<int:user_id>/toggle', methods=['POST'])
 @admin_required

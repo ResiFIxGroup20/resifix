@@ -44,7 +44,7 @@
 
       <form method="POST" action="{{ url_for('auth.register') }}" novalidate id="register-form">
 
-        <!-- ── STEP 1: Role Selection ───────────────────────────────────── -->
+        <!-- STEP 1: Role Selection -->
         <div class="form-group-custom">
           <label class="form-label-custom">I am registering as *</label>
           <div class="role-selector">
@@ -70,7 +70,7 @@
           </div>
         </div>
 
-        <!-- ── STEP 2: Common Fields ───────────────────────────────────── -->
+        <!-- STEP 2: Common Fields  -->
         <div class="form-group-custom">
           <label class="form-label-custom">Full Name *</label>
           <div class="input-icon-wrap">
@@ -101,7 +101,7 @@
           </div>
         </div>
 
-        <!-- ── STEP 3: Student-Only Fields (hidden by default) ────────── -->
+        <!--  STEP 3: Student-Only Fields (hidden by default) -->
         <div id="student-fields" style="display:none;">
           <div class="student-fields-banner">
             <i class="bi bi-door-closed-fill"></i>
@@ -118,7 +118,7 @@
           </div>
         </div>
 
-        <!-- ── STEP 4: Password ────────────────────────────────────────── -->
+        <!-- STEP 4: Password -->
         <div class="form-group-custom">
           <label class="form-label-custom">Password *</label>
           <div class="input-icon-wrap">
@@ -168,7 +168,7 @@
 
 {% block scripts %}
 <script>
-  // ── Role card selection ────────────────────────────────────────────────────
+  //  Role card selection 
   const radioResident   = document.getElementById('role-resident');
   const radioTechnician = document.getElementById('role-technician');
   const cardResident    = document.getElementById('card-resident');
@@ -194,7 +194,7 @@
   radioResident.addEventListener('change', updateRoleUI);
   radioTechnician.addEventListener('change', updateRoleUI);
 
-  // ── Password toggle ────────────────────────────────────────────────────────
+  // Password toggle 
   function togglePassword(inputId, eyeId) {
     const input = document.getElementById(inputId);
     const eye   = document.getElementById(eyeId);
@@ -207,7 +207,7 @@
     }
   }
 
-  // ── Password strength meter ────────────────────────────────────────────────
+  // Password strength meter 
   const pwInput = document.getElementById('reg-password');
   const fill    = document.getElementById('strength-fill');
   const label   = document.getElementById('strength-label');
@@ -226,7 +226,7 @@
     label.textContent     = score > 0 ? 'Strength: ' + levels[score] : '';
   });
 
-  // ── Confirm password match check ──────────────────────────────────────────
+  //  Confirm password match check
   document.getElementById('register-form').addEventListener('submit', function(e) {
     const confirm = document.getElementById('reg-confirm');
     if (pwInput.value !== confirm.value) {
