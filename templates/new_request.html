@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+
+{% block title %}New Request — ResiFix{% endblock %}
+
+{% block page_title %}Create New Maintenance Request{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Main Form -->
+    <div class="form-card">
+        <div class="form-card-header">
+            <i class="bi bi-pencil-square"></i>
+            <span>Request Details</span>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" id="requestForm">
+            <div class="form-sections">
+                <!-- Section 1: Basic Info -->
+                <div class="form-section">
+                    <div class="section-label">
+                        <span class="section-number">1</span>
+                        Basic Information
+                    </div>
+
+                    <div class="form-group-custom">
+                        <label class="form-label-custom">Request Title *</label>
+                        <div class="input-icon-wrap">
+                            <i class="bi bi-card-heading input-icon"></i>
+                            <input type="text" 
+                                   name="title" 
+                                   class="form-control-custom" 
+                                   placeholder="e.g., Leaking faucet, Broken light" 
+                                   required
+                                   maxlength="100">
+                        </div>
+                        <div class="char-count">
+                            <span id="titleCount">0</span>/100
+                        </div>
+                    </div>
+
+                    <div class="form-group-custom">
+                        <label class="form-label-custom">Category *</label>
+                        <div class="input-icon-wrap">
+                            <i class="bi bi-tag input-icon"></i>
+                            <select name="category" class="form-select-custom" required>
+                                <option value="" disabled selected>Select a category</option>
+                                <option value="plumbing">🚰 Plumbing</option>
+                                <option value="electrical">⚡ Electrical</option>
+                                <option value="furniture">🪑 Furniture</option>
+                                <option value="appliance">🔌 Appliance</option>
+                                <option value="internet">🌐 Internet/WiFi</option>
+                                <option value="cleaning">🧹 Cleaning</option>
+                                <option value="security">🔒 Security</option>
+                                <option value="other">📌 Other</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group-custom">
+                        <label class="form-label-custom">Priority *</label>
+                        <div class="priority-selector">
+                            <label class="priority-option">
+                                <input type="radio" name="priority" value="low" checked>
+                                <span class="priority-label">
+                                    <i class="bi bi-arrow-down-circle"></i>
+                                    Low
+                                </span>
+                            </label>
+                            <label class="priority-option">
+                                <input type="radio" name="priority" value="medium">
+                                <span class="priority-label">
+                                    <i class="bi bi-dash-circle"></i>
+                                    Medium
+                                </span>
+                            </label>
+                            <label class="priority-option">
+                                <input type="radio" name="priority" value="high">
+                                <span class="priority-label">
+                                    <i class="bi bi-arrow-up-circle"></i>
+                                    High
+                                </span>
+                            </label>
+                            <label class="priority-option">
+                                <input type="radio" name="priority" value="critical">
+                                <span class="priority-label">
+                                    <i class="bi bi-exclamation-triangle"></i>
+                                    Critical
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Description -->
+                <div class="form-section">
+                    <div class="section-label">
+                        <span class="section-number">2</span>
+                        Issue Description
+                    </div>
+
+                    <div class="form-group-custom">
+                        <label class="form-label-custom">What's the problem? *</label>
+                        <textarea name="description" 
+                                  class="form-textarea-custom" 
+                                  rows="4" 
+                                  placeholder="Please describe the issue in detail..."
+                                  required></textarea>
+                    </div>
+
+                    <div class="form-group-custom">
+                        <label class="form-label-custom">Specific Location (optional)</label>
+                        <div class="input-icon-wrap">
+                            <i class="bi bi-geo-alt input-icon"></i>
+                            <input type="text" 
+                                   name="location_details" 
+                                   class="form-control-custom" 
+                                   placeholder="e.g., Bathroom sink, Bedroom window, etc.">
+                        </div>
+                        <small class="text-muted">Be specific about where the issue is located</small>
+                    </div>
+                </div>
+
+                <!-- Section 3: Images -->
+                <div class="form-section">
+                    <div class="section-label">
+                        <span class="section-number">3</span>
+                        Upload Photos
+                    </div>
+
+                    <div class="form-group-custom">
+                        <label class="form-label-custom">Photos of the issue</label>
+                        <div class="upload-area" id="dropArea">
+                            <i class="bi bi-cloud-upload upload-icon"></i>
+                            <p class="upload-text">Drag & drop images here or click to browse</p>
+                            <p class="upload-hint">Supported: JPG, PNG, GIF (Max 5MB each)</p>
+                            <input type="file" 
+                                   name="images" 
+                                   id="fileInput" 
+                                   multiple 
+                                   accept="image/*" 
+                                   style="display: none;">
+                            <button type="button" class="btn-ghost" onclick="document.getElementById('fileInput').click()">
+                                <i class="bi bi-folder2-open"></i> Browse Files
+                            </button>
+                        </div>
+                        
+                        <!-- Preview Area -->
+                        <div class="preview-area" id="previewArea"></div>
+                    </div>
+                </div>
+
+                <!-- Form Actions -->
+                <div class="form-actions">
+                    <a href="{{ url_for('resident.dashboard') }}" class="btn-ghost">
+                        <i class="bi bi-x-lg"></i> Cancel
+                    </a>
+                    <button type="submit" class="btn-primary">
+                        <i class="bi bi-check-lg"></i> Submit Request
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tips Sidebar -->
+    <div class="tips-card">
+        <div class="tips-header">
+            <i class="bi bi-lightbulb"></i>
+            <span>Tips for a faster resolution</span>
+        </div>
+        <ul class="tips-list">
+            <li>Be specific about the issue location</li>
+            <li>Include clear photos of the problem</li>
+            <li>Mention when the issue started</li>
+            <li>Add your preferred contact time</li>
+            <li>For emergencies, call the front desk</li>
+        </ul>
+        
+        <div class="priority-guide">
+            <div class="priority-guide-title">Priority Guide</div>
+            <div class="guide-item">
+                <span class="priority-badge priority-low">Low</span>
+                <span>Cosmetic issues, minor fixes</span>
+            </div>
+            <div class="guide-item">
+                <span class="priority-badge priority-medium">Medium</span>
+                <span>Functional issues, not urgent</span>
+            </div>
+            <div class="guide-item">
+                <span class="priority-badge priority-high">High</span>
+                <span>Affects daily use, needs attention</span>
+            </div>
+            <div class="guide-item">
+                <span class="priority-badge priority-critical">Critical</span>
+                <span>Emergency - water leak, no power, etc.</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Title character counter
+    const titleInput = document.querySelector('input[name="title"]');
+    const titleCount = document.getElementById('titleCount');
+    
+    titleInput.addEventListener('input', function() {
+        titleCount.textContent = this.value.length;
+    });
+
+    // Image upload preview
+    const dropArea = document.getElementById('dropArea');
+    const fileInput = document.getElementById('fileInput');
+    const previewArea = document.getElementById('previewArea');
+
+    // Prevent default drag behaviors
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    // Highlight drop area on drag
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight() {
+        dropArea.classList.add('highlight');
+    }
+
+    function unhighlight() {
+        dropArea.classList.remove('highlight');
+    }
+
+    // Handle dropped files
+    dropArea.addEventListener('drop', handleDrop, false);
+    fileInput.addEventListener('change', handleFiles, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        fileInput.files = files;
+        handleFiles({ target: { files: files } });
+    }
+
+    function handleFiles(e) {
+        const files = e.target.files;
+        previewArea.innerHTML = '';
+        
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.createElement('div');
+                    preview.className = 'preview-item';
+                    preview.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview">
+                        <button type="button" class="remove-preview" onclick="this.parentElement.remove()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    `;
+                    previewArea.appendChild(preview);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+    }
+</script>
+
+<style>
+    .upload-area {
+        border: 2px dashed var(--border-strong);
+        border-radius: var(--radius);
+        padding: 40px 20px;
+        text-align: center;
+        background: var(--bg-3);
+        cursor: pointer;
+        transition: all 0.15s;
+        margin-bottom: 20px;
+    }
+
+    .upload-area.highlight {
+        border-color: var(--accent);
+        background: var(--accent-dim);
+    }
+
+    .upload-icon {
+        font-size: 48px;
+        color: var(--text-muted);
+        margin-bottom: 16px;
+        display: block;
+    }
+
+    .upload-text {
+        font-size: 16px;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+
+    .upload-hint {
+        font-size: 12px;
+        color: var(--text-faint);
+        margin-bottom: 16px;
+    }
+
+    .preview-area {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+    }
+
+    .preview-item {
+        position: relative;
+        aspect-ratio: 1;
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        border: 1px solid var(--border-strong);
+    }
+
+    .preview-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .remove-preview {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.5);
+        border: none;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+
+    .remove-preview:hover {
+        background: var(--danger);
+    }
+</style>
+{% endblock %}
