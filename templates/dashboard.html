@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+
+{% block title %}My Requests — ResiFix{% endblock %}
+
+{% block page_title %}My Maintenance Requests{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(37,99,235,0.1); color: var(--accent);">
+            <i class="bi bi-clipboard-check"></i>
+        </div>
+        <div>
+            <div class="stat-value">{{ stats.total }}</div>
+            <div class="stat-label">Total Requests</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(245,158,11,0.1); color: var(--warning);">
+            <i class="bi bi-clock-history"></i>
+        </div>
+        <div>
+            <div class="stat-value">{{ stats.pending }}</div>
+            <div class="stat-label">Pending</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(37,99,235,0.1); color: var(--info);">
+            <i class="bi bi-tools"></i>
+        </div>
+        <div>
+            <div class="stat-value">{{ stats.assigned + stats.in_progress }}</div>
+            <div class="stat-label">In Progress</div>
+        </div>
+    </div>
+    
+    <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(34,197,94,0.1); color: var(--success);">
+            <i class="bi bi-check-circle"></i>
+        </div>
+        <div>
+            <div class="stat-value">{{ stats.resolved }}</div>
+            <div class="stat-label">Completed</div>
+        </div>
+    </div>
+</div>
+
+<!-- Requests List -->
+<div class="card-panel">
+    <div class="panel-header">
+        <div class="panel-title">
+            <i class="bi bi-list-task"></i>
+            Your Requests
+        </div>
+        <div class="panel-actions">
+            <a href="{{ url_for('resident.new_request') }}" class="btn-primary">
+                <i class="bi bi-plus-lg"></i> New Request
+            </a>
+        </div>
+    </div>
+
+    {% if requests %}
+    <div class="request-list">
+        {% for req in requests %}
+        <a href="{{ url_for('resident.view_request', request_id=req.id) }}" class="request-row">
+            <div class="request-ticket font-mono">{{ req.ticket_no }}</div>
+            
+            <div class="request-main">
+                <div class="request-title">{{ req.title }}</div>
+                <div class="request-meta">
+                    <span><i class="bi bi-calendar3"></i> {{ req.submitted_at[:10] }}</span>
+                    <span><i class="bi bi-tag"></i> {{ req.category|title }}</span>
+                    {% if req.technician_id %}
+                    <span><i class="bi bi-person-gear"></i> Assigned</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="request-badges">
+                {% if req.priority == 'critical' %}
+                <span class="priority-badge priority-critical">Critical</span>
+                {% elif req.priority == 'high' %}
+                <span class="priority-badge priority-high">High</span>
+                {% elif req.priority == 'medium' %}
+                <span class="priority-badge priority-medium">Medium</span>
+                {% else %}
+                <span class="priority-badge priority-low">Low</span>
+                {% endif %}
+                
+                {% if req.status == 'pending' %}
+                <span class="status-badge badge-pending">Pending</span>
+                {% elif req.status == 'assigned' %}
+                <span class="status-badge badge-assigned">Assigned</span>
+                {% elif req.status == 'in_progress' %}
+                <span class="status-badge badge-progress">In Progress</span>
+                {% elif req.status == 'resolved' %}
+                <span class="status-badge badge-resolved">Resolved</span>
+                {% endif %}
+            </div>
+            
+            <div class="request-arrow">
+                <i class="bi bi-chevron-right"></i>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-icon">
+            <i class="bi bi-inbox"></i>
+        </div>
+        <h3 class="empty-title">No requests yet</h3>
+        <p class="empty-sub">Create your first maintenance request to get started</p>
+        <a href="{{ url_for('resident.new_request') }}" class="btn-primary mt-4">
+            <i class="bi bi-plus-lg"></i> Create Request
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
