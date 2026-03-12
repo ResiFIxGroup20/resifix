@@ -1,233 +1,150 @@
-from flask import Blueprint, render_template, redirect, url_for, session, flash, request
+# Handles: technician dashboard (task list) and task detail (status updates + notes)
+
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from database.db import (
     get_requests_by_technician,
     get_request_by_id,
-    get_user_by_id,
-    get_comments_by_request,
+    get_all_users,
     update_request_status,
     add_comment,
-    create_notification,
-    get_ratings_by_technician,
-    get_average_rating,
+    get_comments_by_request,
     get_images_by_request,
+    get_average_rating,
+    get_ratings_by_technician,
 )
+from functools import wraps
+import math
 
 technician = Blueprint('technician', __name__)
 
-
-# --- Auth guard helper ---
-
-def technician_required():
-    """Return a redirect if the user is not a logged-in technician, else None."""
-    if not session.get('user_id'):
-        flash('Please log in to continue.', 'warning')
-        return redirect(url_for('auth.login'))
-    if session.get('role') != 'technician':
-        flash('Access denied — technicians only.', 'error')
-        return redirect(url_for('auth.login'))
-    return None  # all good
+PER_PAGE = 10
 
 
-# --- Status badge helper (passed to templates via context) ---
+# ── Access-control decorator ──────────────────────────────────────────────────
 
-STATUS_ORDER = ['pending', 'assigned', 'in_progress', 'resolved', 'closed', 'cancelled']
+def technician_required(f):
+    """Redirect non-technicians away from technician pages."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if 'user_id' not in session:
+            flash('Please log in to continue.', 'warning')
+            return redirect(url_for('auth.login'))
+        if session.get('role') != 'technician':
+            flash('Access denied. Technicians only.', 'danger')
+            return redirect(url_for('auth.login'))
+        return f(*args, **kwargs)
+    return decorated
 
-# Statuses a technician is allowed to transition TO from a given current status
-ALLOWED_TRANSITIONS = {
-    'assigned':    ['in_progress', 'cancelled'],
-    'in_progress': ['resolved',    'cancelled'],
-    # technician cannot re-open resolved/closed/cancelled tickets
-    'resolved':    [],
-    'closed':      [],
-    'cancelled':   [],
-    'pending':     [],  # pending tickets must be assigned by admin first
-}
 
-
-# ─────────────────────────────────────────────
-#  Dashboard  —  /technician
-# ─────────────────────────────────────────────
+# ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @technician.route('/technician')
+@technician_required
 def technician_dashboard():
-    """Main technician dashboard: shows all jobs assigned to this technician."""
+    """Technician task list — filtered by status, sorted, paginated."""
 
-    guard = technician_required()
-    if guard:
-        return guard
+    tech_id   = session['user_id']
+    all_tasks = get_requests_by_technician(tech_id)
+    all_users = get_all_users()
+    user_map  = {u['id']: u for u in all_users}
 
-    tech_id = session['user_id']
+    # Filters
+    status_filter = request.args.get('status', '').strip()
+    page          = max(1, int(request.args.get('page', 1) or 1))
 
-    # Fetch all requests for this technician (ordered by submitted_at DESC in db)
-    all_requests = get_requests_by_technician(tech_id)
+    filtered = all_tasks
+    if status_filter:
+        filtered = [t for t in filtered if t['status'] == status_filter]
 
-    # Optional status filter via query param e.g. ?status=in_progress
-    status_filter = request.args.get('status', '').strip().lower()
-    valid_statuses = ['pending', 'assigned', 'in_progress', 'resolved', 'closed', 'cancelled']
+    # Stats (always on all tasks for this technician)
+    stats = {
+        'total':       len(all_tasks),
+        'assigned':    sum(1 for t in all_tasks if t['status'] == 'assigned'),
+        'in_progress': sum(1 for t in all_tasks if t['status'] == 'in_progress'),
+        'resolved':    sum(1 for t in all_tasks if t['status'] == 'resolved'),
+        'critical':    sum(1 for t in all_tasks if t['priority'] == 'critical'),
+    }
 
-    if status_filter and status_filter in valid_statuses:
-        filtered = [r for r in all_requests if r['status'] == status_filter]
-    else:
-        status_filter = ''  # clear invalid values
-        filtered = all_requests
+    # Rating summary
+    avg_rating    = get_average_rating(tech_id)
+    ratings       = get_ratings_by_technician(tech_id)
+    total_ratings = len(ratings)
 
-    # Build summary counts for the stat cards
-    counts = {s: 0 for s in valid_statuses}
-    for r in all_requests:
-        if r['status'] in counts:
-            counts[r['status']] += 1
-
-    # Rating summary for the sidebar card
-    avg_rating  = get_average_rating(tech_id)
-    all_ratings = get_ratings_by_technician(tech_id)
+    # Pagination
+    total_results = len(filtered)
+    total_pages   = max(1, math.ceil(total_results / PER_PAGE))
+    page          = min(page, total_pages)
+    offset        = (page - 1) * PER_PAGE
+    paginated     = filtered[offset: offset + PER_PAGE]
 
     return render_template(
         'technician/dashboard.html',
-        requests=filtered,
-        counts=counts,
-        total=len(all_requests),
+        tasks=paginated,
+        stats=stats,
+        user_map=user_map,
         status_filter=status_filter,
+        page=page,
+        total_pages=total_pages,
+        total_results=total_results,
         avg_rating=avg_rating,
-        rating_count=len(all_ratings),
+        total_ratings=total_ratings,
     )
 
 
-# ─────────────────────────────────────────────
-#  Job Detail  —  /technician/job/<id>
-# ─────────────────────────────────────────────
+# ── Task Detail ───────────────────────────────────────────────────────────────
 
-@technician.route('/technician/job/<int:request_id>')
-def job_detail(request_id):
-    """Full detail view for a single maintenance request."""
-
-    guard = technician_required()
-    if guard:
-        return guard
+@technician.route('/technician/task/<int:request_id>', methods=['GET', 'POST'])
+@technician_required
+def task_detail(request_id):
+    """View a single assigned task; update status or add a work note."""
 
     tech_id = session['user_id']
+    task    = get_request_by_id(request_id)
 
-    # Fetch the request and verify it belongs to this technician
-    job = get_request_by_id(request_id)
-    if not job or job['technician_id'] != tech_id:
-        flash('Job not found or not assigned to you.', 'error')
+    if not task:
+        flash('Task not found.', 'danger')
         return redirect(url_for('technician.technician_dashboard'))
 
-    # Resident info for display
-    resident = get_user_by_id(job['resident_id'])
+    # Technicians may only view tasks assigned to them
+    if task['technician_id'] != tech_id:
+        flash('You are not assigned to this task.', 'warning')
+        return redirect(url_for('technician.technician_dashboard'))
 
-    # Include internal notes for technicians (include_internal=True)
+    all_users = get_all_users()
+    user_map  = {u['id']: u for u in all_users}
+
+    # Fetch comments (include internal so technician can see their own notes)
     comments = get_comments_by_request(request_id, include_internal=True)
+    images   = get_images_by_request(request_id)
 
-    # Fetch author info for each comment so template can show names
-    comments_with_authors = []
-    for c in comments:
-        author = get_user_by_id(c['author_id'])
-        comments_with_authors.append({'comment': c, 'author': author})
+    if request.method == 'POST':
+        action = request.form.get('action')
 
-    # Images attached to this request
-    images = get_images_by_request(request_id)
+        # Update status — technicians move between assigned / in_progress / resolved
+        if action == 'update_status':
+            new_status = request.form.get('status')
+            allowed    = ['assigned', 'in_progress', 'resolved']
+            if new_status not in allowed:
+                flash('Invalid status selection.', 'danger')
+            else:
+                update_request_status(request_id, new_status)
+                flash(f'Status updated to "{new_status.replace("_", " ").title()}".', 'success')
+            return redirect(url_for('technician.task_detail', request_id=request_id))
 
-    # What status transitions are allowed from the current status
-    allowed_next = ALLOWED_TRANSITIONS.get(job['status'], [])
+        # Add a work note (saved as internal comment)
+        if action == 'add_note':
+            body = request.form.get('note_body', '').strip()
+            if not body:
+                flash('Note cannot be empty.', 'warning')
+            else:
+                add_comment(request_id, tech_id, body, is_internal=True)
+                flash('Work note added.', 'success')
+            return redirect(url_for('technician.task_detail', request_id=request_id))
 
     return render_template(
-        'technician/job_detail.html',
-        job=job,
-        resident=resident,
-        comments=comments_with_authors,
+        'technician/task_detail.html',
+        task=task,
+        user_map=user_map,
+        comments=comments,
         images=images,
-        allowed_next=allowed_next,
-        status_order=STATUS_ORDER,
     )
-
-
-# ─────────────────────────────────────────────
-#  Update Status  —  POST /technician/job/<id>/status
-# ─────────────────────────────────────────────
-
-@technician.route('/technician/job/<int:request_id>/status', methods=['POST'])
-def update_status(request_id):
-    """Handle status change form submission from the job detail page."""
-
-    guard = technician_required()
-    if guard:
-        return guard
-
-    tech_id = session['user_id']
-
-    # Verify ownership
-    job = get_request_by_id(request_id)
-    if not job or job['technician_id'] != tech_id:
-        flash('Job not found or not assigned to you.', 'error')
-        return redirect(url_for('technician.technician_dashboard'))
-
-    new_status = request.form.get('status', '').strip().lower()
-    allowed_next = ALLOWED_TRANSITIONS.get(job['status'], [])
-
-    # Validate the requested transition
-    if new_status not in allowed_next:
-        flash(f'Cannot change status from "{job["status"]}" to "{new_status}".', 'error')
-        return redirect(url_for('technician.job_detail', request_id=request_id))
-
-    # Persist the status change
-    update_request_status(request_id, new_status)
-
-    # Notify the resident about the status update
-    status_labels = {
-        'in_progress': 'is now in progress',
-        'resolved':    'has been resolved',
-        'cancelled':   'has been cancelled',
-    }
-    label = status_labels.get(new_status, f'status changed to {new_status}')
-    create_notification(
-        user_id=job['resident_id'],
-        message=f'Your request "{job["title"]}" ({job["ticket_no"]}) {label}.',
-        request_id=request_id,
-        type='in_app',
-    )
-
-    flash(f'Status updated to "{new_status}".', 'success')
-    return redirect(url_for('technician.job_detail', request_id=request_id))
-
-
-# ─────────────────────────────────────────────
-#  Add Comment / Internal Note  —  POST /technician/job/<id>/comment
-# ─────────────────────────────────────────────
-
-@technician.route('/technician/job/<int:request_id>/comment', methods=['POST'])
-def add_job_comment(request_id):
-    """Submit a comment or internal note on a job."""
-
-    guard = technician_required()
-    if guard:
-        return guard
-
-    tech_id = session['user_id']
-
-    # Verify ownership
-    job = get_request_by_id(request_id)
-    if not job or job['technician_id'] != tech_id:
-        flash('Job not found or not assigned to you.', 'error')
-        return redirect(url_for('technician.technician_dashboard'))
-
-    body = request.form.get('body', '').strip()
-    if not body:
-        flash('Comment cannot be empty.', 'warning')
-        return redirect(url_for('technician.job_detail', request_id=request_id))
-
-    # is_internal checkbox — technicians can post internal notes
-    is_internal = bool(request.form.get('is_internal'))
-
-    add_comment(request_id, tech_id, body, is_internal=is_internal)
-
-    # Notify resident only for public (non-internal) comments
-    if not is_internal:
-        create_notification(
-            user_id=job['resident_id'],
-            message=f'A technician left an update on your request "{job["title"]}" ({job["ticket_no"]}).',
-            request_id=request_id,
-            type='in_app',
-        )
-
-    flash('Note added.', 'success')
-    return redirect(url_for('technician.job_detail', request_id=request_id))
