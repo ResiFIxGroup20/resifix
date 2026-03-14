@@ -78,27 +78,15 @@
           <i class="bi bi-arrow-right-circle-fill"></i>
         </button>
       </form>
+      <p style="text-align:center; margin-top:12px; font-size:13px;">
+        <a href="{{ url_for('auth.forgot_password') }}" class="text-muted">Forgot your password?</a>
+      </p>
 
       <p class="auth-switch">
         Don't have an account? <a href="{{ url_for('auth.register') }}">Register here</a>
       </p>
 
-      <!-- Demo credentials(to be removed when we have completed the system) -->
-      <div class="demo-credentials">
-        <div class="demo-title">
-          <i class="bi bi-info-circle"></i> Demo Credentials (click to fill)
-        </div>
-        <div class="demo-grid">
-          <div class="demo-item" onclick="fillCreds('admin1', 'admin123')">
-            <span class="demo-role admin">Admin</span>
-            <span class="demo-user">admin1 / admin123</span>
-          </div>
-          <div class="demo-item" onclick="fillCreds('tech1', 'tech123')">
-            <span class="demo-role tech">Tech</span>
-            <span class="demo-user">tech1 / tech123</span>
-          </div>
-          
-        </div>
+      
       </div>
 
     </div>

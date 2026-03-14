@@ -20,7 +20,7 @@ technician = Blueprint('technician', __name__)
 PER_PAGE = 10
 
 
-# ── Access-control decorator ──────────────────────────────────────────────────
+#  Access-control decorator 
 
 def technician_required(f):
     """Redirect non-technicians away from technician pages."""
@@ -36,7 +36,7 @@ def technician_required(f):
     return decorated
 
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────
+#  Dashboard
 
 @technician.route('/technician')
 @technician_required
@@ -91,7 +91,7 @@ def technician_dashboard():
     )
 
 
-# ── Task Detail ───────────────────────────────────────────────────────────────
+# Task Detail 
 
 @technician.route('/technician/task/<int:request_id>', methods=['GET', 'POST'])
 @technician_required

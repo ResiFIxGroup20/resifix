@@ -1,45 +1,94 @@
-
 import sqlite3
 import os
 from datetime import datetime
 
 # Path to the database file
 DATABASE = os.path.join(os.path.dirname(__file__), 'resifix.db')
-SCHEMA = os.path.join(os.path.dirname(__file__), 'schema.sql')
-
-
-
+SCHEMA   = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 
 def get_connection():
     """Create and return a database connection."""
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row  # lets us access columns by name
-    conn.execute("PRAGMA foreign_keys = ON")  # enforce foreign keys
+    conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
 def init_db():
-    """Create all tables from schema.sql if they don't exist."""
+    """Create all tables from schema.sql. Migrations run automatically."""
     conn = get_connection()
     with open(SCHEMA, 'r') as f:
-        conn.executescript(f.read())
+        sql = f.read()
+    # Run each statement separately so ALTER TABLE errors don't stop everything
+    for statement in sql.split(';'):
+        statement = statement.strip()
+        if statement:
+            try:
+                conn.execute(statement)
+            except sqlite3.OperationalError as e:
+                # Ignore "duplicate column" errors from ALTER TABLE migrations
+                if 'duplicate column' in str(e).lower():
+                    pass
+                else:
+                    raise
     conn.commit()
     conn.close()
     print("Database initialized successfully.")
 
 
-# USER FUNCTIONS
+# ── RESIDENCE FUNCTIONS ────────────────────────────────────────────────────
 
 
-def create_user(username, email, password, full_name, room_number, role='resident'):
+def get_all_residences():
+    """Get all active residences (for dropdowns)."""
+    conn = get_connection()
+    residences = conn.execute(
+        "SELECT * FROM residences WHERE is_active = 1 ORDER BY name ASC"
+    ).fetchall()
+    conn.close()
+    return residences
+
+
+def add_residence(name):
+    """Add a new residence building (admin only)."""
+    conn = get_connection()
+    try:
+        conn.execute(
+            "INSERT INTO residences (name) VALUES (?)", (name,)
+        )
+        conn.commit()
+        return True
+    except sqlite3.IntegrityError:
+        return False  # name already exists
+    finally:
+        conn.close()
+
+
+def set_residence_active(residence_id, is_active):
+    """Activate or deactivate a residence (admin only)."""
+    conn = get_connection()
+    conn.execute(
+        "UPDATE residences SET is_active = ? WHERE id = ?", (is_active, residence_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+# ── USER FUNCTIONS ─────────────────────────────────────────────────────────
+
+
+def create_user(username, email, password, full_name, room_number,
+                role='resident', residence=None, specialization=None):
     """Insert a new user into the database."""
     conn = get_connection()
     try:
         conn.execute("""
-            INSERT INTO users (username, email, password, full_name, room_number, role)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (username, email, password, full_name, room_number, role))
+            INSERT INTO users
+              (username, email, password, full_name, room_number, role, residence, specialization)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (username, email, password, full_name, room_number,
+              role, residence, specialization))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
@@ -81,17 +130,55 @@ def get_user_by_email(email):
 def get_all_users():
     """Get all users (admin use)."""
     conn = get_connection()
-    users = conn.execute("SELECT * FROM users").fetchall()
+    users = conn.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
     conn.close()
     return users
 
 
 def get_all_technicians():
-    """Get all users with role technician."""
+    """Get all active technicians."""
     conn = get_connection()
     technicians = conn.execute(
         "SELECT * FROM users WHERE role = 'technician' AND is_active = 1"
     ).fetchall()
+    conn.close()
+    return technicians
+
+
+def get_available_technicians_for_request(residence, category):
+    """
+    Return technicians who are:
+    - Active
+    - Belong to the same residence as the request
+    - Have a matching specialization OR are 'general'
+    - NOT currently assigned to an incomplete request
+    """
+    # Map request category to technician specialization
+    category_map = {
+        'Plumbing':    'plumbing',
+        'Electrical':  'electrical',
+        'Furniture':   'furniture',
+        'Appliance':   'appliance',
+        'Internet':    'internet',
+        'Cleaning':    'cleaning',
+        'Security':    'security',
+        'General':     'general',
+    }
+    specialization = category_map.get(category, category.lower())
+
+    conn = get_connection()
+    technicians = conn.execute("""
+        SELECT * FROM users
+        WHERE role = 'technician'
+          AND is_active = 1
+          AND residence = ?
+          AND (specialization = ? OR specialization = 'general')
+          AND id NOT IN (
+              SELECT technician_id FROM maintenance_requests
+              WHERE status NOT IN ('resolved', 'closed', 'cancelled')
+                AND technician_id IS NOT NULL
+          )
+    """, (residence, specialization)).fetchall()
     conn.close()
     return technicians
 
@@ -117,8 +204,7 @@ def set_user_active(user_id, is_active):
     conn.close()
 
 
-
-# MAINTENANCE REQUEST FUNCTIONS
+# ── MAINTENANCE REQUEST FUNCTIONS ──────────────────────────────────────────
 
 
 def generate_ticket_number():
@@ -131,16 +217,18 @@ def generate_ticket_number():
     return f"TKT-{str(count + 1).zfill(5)}"
 
 
-def create_request(resident_id, room_number, category, priority, title, description):
+def create_request(resident_id, room_number, category, priority,
+                   title, description, residence=None):
     """Create a new maintenance request."""
     conn = get_connection()
     ticket_no = generate_ticket_number()
     try:
         conn.execute("""
-            INSERT INTO maintenance_requests 
-            (ticket_no, resident_id, room_number, category, priority, title, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (ticket_no, resident_id, room_number, category, priority, title, description))
+            INSERT INTO maintenance_requests
+              (ticket_no, resident_id, room_number, residence, category, priority, title, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (ticket_no, resident_id, room_number, residence,
+              category, priority, title, description))
         conn.commit()
         return ticket_no
     finally:
@@ -150,19 +238,19 @@ def create_request(resident_id, room_number, category, priority, title, descript
 def get_request_by_id(request_id):
     """Get a single request by ID."""
     conn = get_connection()
-    request = conn.execute(
+    req = conn.execute(
         "SELECT * FROM maintenance_requests WHERE id = ?", (request_id,)
     ).fetchone()
     conn.close()
-    return request
+    return req
 
 
 def get_requests_by_resident(resident_id):
     """Get all requests submitted by a specific resident."""
     conn = get_connection()
     requests = conn.execute("""
-        SELECT * FROM maintenance_requests 
-        WHERE resident_id = ? 
+        SELECT * FROM maintenance_requests
+        WHERE resident_id = ?
         ORDER BY submitted_at DESC
     """, (resident_id,)).fetchall()
     conn.close()
@@ -173,8 +261,8 @@ def get_requests_by_technician(technician_id):
     """Get all requests assigned to a specific technician."""
     conn = get_connection()
     requests = conn.execute("""
-        SELECT * FROM maintenance_requests 
-        WHERE technician_id = ? 
+        SELECT * FROM maintenance_requests
+        WHERE technician_id = ?
         ORDER BY submitted_at DESC
     """, (technician_id,)).fetchall()
     conn.close()
@@ -185,7 +273,7 @@ def get_all_requests():
     """Get all requests (admin use)."""
     conn = get_connection()
     requests = conn.execute("""
-        SELECT * FROM maintenance_requests 
+        SELECT * FROM maintenance_requests
         ORDER BY submitted_at DESC
     """).fetchall()
     conn.close()
@@ -197,7 +285,7 @@ def update_request_status(request_id, status):
     conn = get_connection()
     resolved_at = datetime.now() if status == 'resolved' else None
     conn.execute("""
-        UPDATE maintenance_requests 
+        UPDATE maintenance_requests
         SET status = ?, updated_at = ?, resolved_at = ?
         WHERE id = ?
     """, (status, datetime.now(), resolved_at, request_id))
@@ -209,7 +297,7 @@ def assign_technician(request_id, technician_id):
     """Assign a technician to a request and set status to assigned."""
     conn = get_connection()
     conn.execute("""
-        UPDATE maintenance_requests 
+        UPDATE maintenance_requests
         SET technician_id = ?, status = 'assigned', updated_at = ?
         WHERE id = ?
     """, (technician_id, datetime.now(), request_id))
@@ -228,8 +316,7 @@ def mark_worsening(request_id, is_worsening):
     conn.close()
 
 
-
-# COMMENT FUNCTIONS
+# ── COMMENT FUNCTIONS ──────────────────────────────────────────────────────
 
 
 def add_comment(request_id, author_id, body, is_internal=False):
@@ -253,16 +340,15 @@ def get_comments_by_request(request_id, include_internal=False):
         ).fetchall()
     else:
         comments = conn.execute("""
-            SELECT * FROM comments 
-            WHERE request_id = ? AND is_internal = 0 
+            SELECT * FROM comments
+            WHERE request_id = ? AND is_internal = 0
             ORDER BY created_at ASC
         """, (request_id,)).fetchall()
     conn.close()
     return comments
 
 
-
-# NOTIFCATION FUNCTIONS
+# ── NOTIFICATION FUNCTIONS ─────────────────────────────────────────────────
 
 
 def create_notification(user_id, message, request_id=None, type='in_app'):
@@ -280,8 +366,8 @@ def get_notifications_by_user(user_id):
     """Get all notifications for a user."""
     conn = get_connection()
     notifications = conn.execute("""
-        SELECT * FROM notifications 
-        WHERE user_id = ? 
+        SELECT * FROM notifications
+        WHERE user_id = ?
         ORDER BY created_at DESC
     """, (user_id,)).fetchall()
     conn.close()
@@ -292,7 +378,7 @@ def get_unread_count(user_id):
     """Get count of unread notifications for a user."""
     conn = get_connection()
     count = conn.execute("""
-        SELECT COUNT(*) FROM notifications 
+        SELECT COUNT(*) FROM notifications
         WHERE user_id = ? AND is_read = 0
     """, (user_id,)).fetchone()[0]
     conn.close()
@@ -309,8 +395,7 @@ def mark_notifications_read(user_id):
     conn.close()
 
 
-
-# RATINGS FUNCTIONS
+# ── RATINGS FUNCTIONS ──────────────────────────────────────────────────────
 
 
 def create_rating(request_id, resident_id, technician_id, score, review):
@@ -344,8 +429,7 @@ def get_average_rating(technician_id):
     return round(result, 1) if result else 0.0
 
 
-
-# IMAGES FUNCTIONS
+# ── IMAGES FUNCTIONS ───────────────────────────────────────────────────────
 
 
 def save_image(request_id, file_path):
@@ -369,41 +453,55 @@ def get_images_by_request(request_id):
     return images
 
 
-
-# SEED DATA (for testing only)
+# ── SEED DATA (for testing only) ───────────────────────────────────────────
 
 
 def seed_data():
     """Insert test data so teams can test their features."""
     from werkzeug.security import generate_password_hash
 
-    # Test users
+    # Seed residences first — admin manages these in production
+    add_residence('Residence A')
+    add_residence('Residence B')
+    add_residence('Residence C')
+    add_residence('Residence D')
+
+    # Test users — now include residence and specialization
     create_user('admin1', 'admin@resifix.com',
                 generate_password_hash('admin123'),
-                'Admin User', None, 'admin')
+                'Admin User', None, 'admin',
+                residence='Residence A')
 
     create_user('tech1', 'tech@resifix.com',
                 generate_password_hash('tech123'),
-                'John Technician', None, 'technician')
+                'John Technician', None, 'technician',
+                residence='Residence A', specialization='plumbing')
+
+    create_user('tech2', 'tech2@resifix.com',
+                generate_password_hash('tech123'),
+                'Sara Technician', None, 'technician',
+                residence='Residence A', specialization='electrical')
 
     create_user('student1', 'student@resifix.com',
                 generate_password_hash('student123'),
-                'Jane Resident', 'A101', 'resident')
+                'Jane Resident', 'A101', 'resident',
+                residence='Residence A')
 
-    # Test request
-    create_request(3, 'A101', 'Plumbing', 'high',
+    # Test requests — now include residence
+    create_request(4, 'A101', 'Plumbing', 'high',
                    'Leaking tap in bathroom',
-                   'The tap has been leaking for 2 days')
+                   'The tap has been leaking for 2 days',
+                   residence='Residence A')
 
-    create_request(3, 'A101', 'Electrical', 'medium',
+    create_request(4, 'A101', 'Electrical', 'medium',
                    'Faulty light switch',
-                   'Light switch in bedroom is not working')
+                   'Light switch in bedroom is not working',
+                   residence='Residence A')
 
     print("Seed data inserted successfully.")
 
 
-
- # RUN DIRECTLY TO INITIALIZE DATABASE
+# ── RUN DIRECTLY TO INITIALIZE DATABASE ───────────────────────────────────
 
 
 if __name__ == '__main__':
