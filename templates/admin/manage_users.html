@@ -161,6 +161,7 @@
           {% endif %}
         {% endfor %}
 
+        
         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
           <a class="page-link"
              href="{{ url_for('admin.manage_users', page=page+1, role=role_filter, search=search) }}">

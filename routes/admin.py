@@ -15,6 +15,7 @@ from database.db import (
 from functools import wraps
 import math
 
+
 admin = Blueprint('admin', __name__)
 
 # How many rows per page
