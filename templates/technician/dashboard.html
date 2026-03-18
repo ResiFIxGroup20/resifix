@@ -1,0 +1,140 @@
+{% extends 'base.html' %}
+{% block title %}My Tasks — ResiFix{% endblock %}
+{% block page_title %}My Tasks{% endblock %}
+
+{% block content %}
+
+<!-- Stats Row -->
+<div class="stats-row">
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(37,99,235,0.12); color:var(--accent);">
+      <i class="bi bi-clipboard-check-fill"></i>
+    </div>
+    <div>
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total Tasks</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(56,189,248,0.12); color:var(--info);">
+      <i class="bi bi-clock-history"></i>
+    </div>
+    <div>
+      <div class="stat-value">{{ stats.assigned }}</div>
+      <div class="stat-label">Assigned</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(96,165,250,0.12); color:var(--primary);">
+      <i class="bi bi-tools"></i>
+    </div>
+    <div>
+      <div class="stat-value">{{ stats.in_progress }}</div>
+      <div class="stat-label">In Progress</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(34,197,94,0.12); color:var(--success);">
+      <i class="bi bi-check-circle-fill"></i>
+    </div>
+    <div>
+      <div class="stat-value">{{ stats.resolved }}</div>
+      <div class="stat-label">Resolved</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon" style="background:rgba(245,158,11,0.12); color:var(--warning);">
+      <i class="bi bi-star-fill"></i>
+    </div>
+    <div>
+      <div class="stat-value">{{ avg_rating }}/5</div>
+      <div class="stat-label">Avg Rating ({{ total_ratings }})</div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Tabs -->
+<div class="card-panel">
+  <div class="panel-header">
+    <div class="panel-title">
+      <i class="bi bi-list-task"></i> Task List
+    </div>
+    <div class="panel-actions">
+      {% set statuses = [('', 'All'), ('assigned', 'Assigned'), ('in_progress', 'In Progress'), ('resolved', 'Resolved')] %}
+      {% for val, label in statuses %}
+      <a href="{{ url_for('technician.technician_dashboard') }}{% if val %}?status={{ val }}{% endif %}"
+         class="btn-{% if status_filter == val %}primary{% else %}ghost{% endif %}" style="font-size:12px; padding:5px 12px;">
+        {{ label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if tasks %}
+  <div class="request-list">
+    {% for task in tasks %}
+    <a href="{{ url_for('technician.task_detail', request_id=task.id) }}" class="request-row">
+
+      <div class="request-ticket font-mono">{{ task.ticket_no }}</div>
+
+      <div class="request-main">
+        <div class="request-title">{{ task.title }}</div>
+        <div class="request-meta">
+          <span><i class="bi bi-building"></i> {{ task.residence or '—' }}</span>
+          <span><i class="bi bi-door-closed"></i> Room {{ task.room_number or '—' }}</span>
+          <span><i class="bi bi-tag"></i> {{ task.category|title }}</span>
+          <span><i class="bi bi-calendar3"></i> {{ task.submitted_at[:10] }}</span>
+        </div>
+      </div>
+
+      <div class="request-badges">
+        {% set p = task.priority %}
+        <span class="priority-badge priority-{{ p }}">{{ p|title }}</span>
+
+        {% set s = task.status %}
+        <span class="status-badge
+          {% if s == 'assigned' %}badge-assigned
+          {% elif s == 'in_progress' %}badge-progress
+          {% elif s == 'resolved' %}badge-resolved
+          {% else %}badge-closed{% endif %}">
+          {{ s|replace('_',' ')|title }}
+        </span>
+      </div>
+
+      <div class="request-arrow"><i class="bi bi-chevron-right"></i></div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Pagination -->
+  {% if total_pages > 1 %}
+  <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-top:1px solid var(--border);">
+    <span class="small text-muted">Page {{ page }} of {{ total_pages }} — {{ total_results }} task{{ 's' if total_results != 1 }}</span>
+    <div style="display:flex; gap:6px;">
+      {% if page > 1 %}
+      <a href="{{ url_for('technician.technician_dashboard', page=page-1, status=status_filter) }}" class="btn-ghost" style="padding:4px 10px; font-size:12px;">
+        <i class="bi bi-chevron-left"></i>
+      </a>
+      {% endif %}
+      {% if page < total_pages %}
+      <a href="{{ url_for('technician.technician_dashboard', page=page+1, status=status_filter) }}" class="btn-ghost" style="padding:4px 10px; font-size:12px;">
+        <i class="bi bi-chevron-right"></i>
+      </a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i class="bi bi-inbox"></i></div>
+    <div class="empty-title">No tasks found</div>
+    <div class="empty-sub">
+      {% if status_filter %}No {{ status_filter|replace('_','') }} tasks at the moment.
+      {% else %}You have no assigned tasks yet.{% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

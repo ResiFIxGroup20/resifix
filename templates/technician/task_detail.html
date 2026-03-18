@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% block title %}{{ task.ticket_no }} — ResiFix{% endblock %}
+{% block page_title %}Task Detail{% endblock %}
+
+{% block content %}
+
+<!-- Back button -->
+<div style="margin-bottom:16px;">
+  <a href="{{ url_for('technician.technician_dashboard') }}" class="btn-ghost">
+    <i class="bi bi-arrow-left"></i> Back to Tasks
+  </a>
+</div>
+
+<div class="detail-layout">
+
+  <!-- ── Left: Task Info ────────────────────────────────────────────────── -->
+  <div>
+
+    <!-- Main card -->
+    <div class="detail-main" style="margin-bottom:20px;">
+
+      <div class="detail-header">
+        <span class="detail-ticket font-mono">{{ task.ticket_no }}</span>
+        <div class="detail-badges">
+          {% set p = task.priority %}
+          <span class="priority-badge priority-{{ p }}">{{ p|title }}</span>
+          {% set s = task.status %}
+          <span class="status-badge
+            {% if s == 'assigned' %}badge-assigned
+            {% elif s == 'in_progress' %}badge-progress
+            {% elif s == 'resolved' %}badge-resolved
+            {% else %}badge-closed{% endif %}">
+            {{ s|replace('_',' ')|title }}
+          </span>
+        </div>
+      </div>
+
+      <h2 class="detail-title">{{ task.title }}</h2>
+
+      <div class="detail-meta-row">
+        <span><i class="bi bi-building"></i> {{ task.residence or '—' }}</span>
+        <span><i class="bi bi-door-closed"></i> Room {{ task.room_number or '—' }}</span>
+        <span><i class="bi bi-tag"></i> {{ task.category|title }}</span>
+        <span><i class="bi bi-calendar3"></i> {{ task.submitted_at[:10] if task.submitted_at else '—' }}</span>
+        {% if task.is_worsening %}
+        <span style="color:var(--danger);"><i class="bi bi-arrow-up-right-circle-fill"></i> Marked as worsening</span>
+        {% endif %}
+      </div>
+
+      <!-- Description -->
+      <div class="detail-description">
+        <div class="section-label-sm">Description</div>
+        <p style="line-height:1.7; color:var(--text-muted);">{{ task.description or 'No description provided.' }}</p>
+      </div>
+
+      <!-- Resident info -->
+      {% if task.resident_id in user_map %}
+      {% set res = user_map[task.resident_id] %}
+      <div style="background:var(--bg-3); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 16px; margin-bottom:20px;">
+        <div class="section-label-sm" style="margin-bottom:8px;">Submitted By</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="user-avatar-sm">{{ res['full_name'][0].upper() }}</div>
+          <div>
+            <div style="font-weight:600; font-size:13px;">{{ res['full_name'] }}</div>
+            <div style="font-size:11px; color:var(--text-muted);">{{ res['email'] }}</div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Images -->
+      {% if images %}
+      <div style="margin-bottom:20px;">
+        <div class="section-label-sm">Uploaded Photos</div>
+        <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:8px;">
+          {% for img in images %}
+          <a href="{{ url_for('static', filename=img['file_path']) }}" target="_blank">
+            <img src="{{ url_for('static', filename=img['file_path']) }}"
+                 style="width:100px; height:80px; object-fit:cover; border-radius:6px; border:1px solid var(--border);">
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Comments / Work notes -->
+      <div class="comments-section">
+        <div class="section-label-sm" style="margin-bottom:16px;">Work Notes & Comments</div>
+
+        {% if comments %}
+        <div class="comments-list">
+          {% for c in comments %}
+          {% set author = user_map.get(c['author_id']) %}
+          <div class="comment-item {% if c['is_internal'] %}comment-internal{% endif %}">
+            <div class="comment-avatar">
+              {{ author['full_name'][0].upper() if author else '?' }}
+            </div>
+            <div class="comment-body">
+              <div class="comment-meta">
+                <span class="comment-author">{{ author['full_name'] if author else 'Unknown' }}</span>
+                <span class="comment-role">{{ author['role']|title if author else '' }}</span>
+                {% if c['is_internal'] %}<span class="internal-badge">Internal</span>{% endif %}
+                <span class="comment-date">{{ c['created_at'][:16] if c['created_at'] else '' }}</span>
+              </div>
+              <div class="comment-text">{{ c['body'] }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:var(--text-faint); font-size:13px;">No notes yet.</p>
+        {% endif %}
+
+        <!-- Add work note form -->
+        <form method="POST" class="comment-form" style="margin-top:20px;">
+          <input type="hidden" name="action" value="add_note">
+          <div class="form-group-custom">
+            <label class="form-label-custom">Add Work Note</label>
+            <textarea name="note_body" class="form-textarea-custom" rows="3"
+                      placeholder="Describe what you did or found..."></textarea>
+          </div>
+          <button type="submit" class="btn-ghost">
+            <i class="bi bi-sticky-fill"></i> Save Note
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Right: Actions ─────────────────────────────────────────────────── -->
+  <div class="detail-sidebar">
+
+    <!-- Update Status -->
+    <div class="action-card">
+      <div class="action-card-title">
+        <i class="bi bi-arrow-repeat" style="color:var(--accent);"></i> Update Status
+      </div>
+
+      <form method="POST">
+        <input type="hidden" name="action" value="update_status">
+        <div class="form-group-custom">
+          <label class="form-label-custom">New Status</label>
+          <select name="status" class="form-select-custom">
+            <option value="assigned"    {% if task.status == 'assigned'    %}selected{% endif %}>Assigned — not started yet</option>
+            <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Progress — currently working</option>
+            <option value="resolved"    {% if task.status == 'resolved'    %}selected{% endif %}>Resolved — work complete</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-primary w-100">
+          <i class="bi bi-check-lg"></i> Update Status
+        </button>
+      </form>
+    </div>
+
+    <!-- Task Info -->
+    <div class="info-card">
+      <div class="info-row">
+        <span>Ticket</span>
+        <span class="font-mono">{{ task.ticket_no }}</span>
+      </div>
+      <div class="info-row">
+        <span>Category</span>
+        <span>{{ task.category|title }}</span>
+      </div>
+      <div class="info-row">
+        <span>Priority</span>
+        <span class="priority-badge priority-{{ task.priority }}" style="font-size:10px;">{{ task.priority|title }}</span>
+      </div>
+      <div class="info-row">
+        <span>Residence</span>
+        <span>{{ task.residence or '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span>Room</span>
+        <span>{{ task.room_number or '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span>Submitted</span>
+        <span>{{ task.submitted_at[:10] if task.submitted_at else '—' }}</span>
+      </div>
+      {% if task.resolved_at %}
+      <div class="info-row">
+        <span>Resolved</span>
+        <span>{{ task.resolved_at[:10] }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
