@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Manage Residences — ResiFix{% endblock %}
+{% block page_title %}Manage Residences{% endblock %}
+
+{% block content %}
+
+<div style="display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start;">
+
+  <!-- ── Left: Residence List ──────────────────────────────────────────── -->
+  <div class="card-panel">
+    <div class="panel-header">
+      <div class="panel-title">
+        <i class="bi bi-building-fill"></i> All Residences
+      </div>
+      <span style="font-size:12px; color:var(--text-muted);">{{ residences|length }} building{{ 's' if residences|length != 1 }}</span>
+    </div>
+
+    {% if residences %}
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Building Name</th>
+          <th>Status</th>
+          <th>Added</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for res in residences %}
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <div style="width:32px; height:32px; border-radius:8px; background:var(--accent-dim); display:flex; align-items:center; justify-content:center; color:var(--accent); font-size:16px;">
+                <i class="bi bi-building"></i>
+              </div>
+              <span style="font-weight:600;">{{ res['name'] }}</span>
+            </div>
+          </td>
+          <td>
+            {% if res['is_active'] %}
+            <span style="background:rgba(34,197,94,0.12); color:var(--success); border:1px solid rgba(34,197,94,0.25); padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600;">Active</span>
+            {% else %}
+            <span style="background:rgba(107,114,128,0.12); color:#6b7280; border:1px solid rgba(107,114,128,0.25); padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600;">Inactive</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text-muted); font-size:12px;">{{ res['created_at'][:10] if res['created_at'] else '—' }}</td>
+          <td>
+            <form method="POST" action="{{ url_for('admin.toggle_residence', residence_id=res['id']) }}" style="display:inline;">
+              <button type="submit" class="btn-icon" title="{{ 'Deactivate' if res['is_active'] else 'Activate' }}">
+                <i class="bi bi-{% if res['is_active'] %}pause-circle{% else %}play-circle{% endif %}"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon"><i class="bi bi-building-x"></i></div>
+      <div class="empty-title">No residences yet</div>
+      <div class="empty-sub">Add your first residence building using the form.</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Right: Add New ────────────────────────────────────────────────── -->
+  <div class="action-card">
+    <div class="action-card-title">
+      <i class="bi bi-plus-circle-fill" style="color:var(--accent);"></i> Add New Residence
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.manage_residences') }}">
+      <div class="form-group-custom">
+        <label class="form-label-custom">Building Name *</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-building input-icon"></i>
+          <input type="text" name="name" class="form-control-custom"
+                 placeholder="e.g. Residence A" required/>
+        </div>
+        <small style="font-size:11px; color:var(--text-muted); margin-top:5px; display:block;">
+          This name will appear in the register dropdown for students and technicians.
+        </small>
+      </div>
+      <button type="submit" class="btn-primary w-100">
+        <i class="bi bi-plus-lg"></i> Add Residence
+      </button>
+    </form>
+  </div>
+
+</div>
+
+{% endblock %}

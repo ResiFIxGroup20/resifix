@@ -12,7 +12,7 @@
 <body>
 
 {% if session.get('user_id') %}
-<!-- Sidebar  -->
+<!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
 <div class="sidebar" id="sidebar">
 
   <div class="sidebar-brand">
@@ -29,17 +29,21 @@
       <i class="bi bi-grid-1x2-fill"></i> Dashboard
     </a>
     <a href="{{ url_for('admin.admin_dashboard') }}?status=pending"
-       class="nav-link">
+       class="nav-link {% if request.args.get('status') == 'pending' %}active{% endif %}">
       <i class="bi bi-clock-history"></i> Pending
     </a>
     <a href="{{ url_for('admin.admin_dashboard') }}?priority=critical"
-       class="nav-link">
+       class="nav-link {% if request.args.get('priority') == 'critical' %}active{% endif %}">
       <i class="bi bi-exclamation-triangle-fill"></i> Critical
     </a>
     <div class="nav-divider">Management</div>
     <a href="{{ url_for('admin.manage_users') }}"
        class="nav-link {% if request.endpoint == 'admin.manage_users' %}active{% endif %}">
       <i class="bi bi-people-fill"></i> Users
+    </a>
+    <a href="{{ url_for('admin.manage_residences') }}"
+       class="nav-link {% if request.endpoint == 'admin.manage_residences' %}active{% endif %}">
+      <i class="bi bi-building-fill"></i> Residences
     </a>
 
     {% elif session.get('role') == 'technician' %}
@@ -55,6 +59,10 @@
     <a href="{{ url_for('technician.technician_dashboard') }}?status=in_progress"
        class="nav-link">
       <i class="bi bi-tools"></i> In Progress
+    </a>
+    <a href="{{ url_for('technician.technician_dashboard') }}?status=resolved"
+       class="nav-link">
+      <i class="bi bi-check-circle-fill"></i> Resolved
     </a>
 
     {% else %}
@@ -75,7 +83,7 @@
 
   </nav>
 
-  <!-- Sidebar footer — user info + logout -->
+  <!-- Sidebar footer -->
   <div class="sidebar-footer">
     <div class="user-info">
       <div class="user-avatar">
@@ -93,10 +101,9 @@
 
 </div>
 
-<!-- Main Content  -->
+<!-- ── Main Content ───────────────────────────────────────────────────── -->
 <div class="main-content" id="main-content">
 
-  <!-- Top bar -->
   <header class="topbar">
     <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
       <i class="bi bi-list"></i>
@@ -104,11 +111,9 @@
     <div class="topbar-title">{% block page_title %}{% endblock %}</div>
     <div class="topbar-actions">
       {% if session.get('role') == 'resident' %}
-      <a href="{{ url_for('resident.new_request') }}" class="btn btn-primary btn-sm">
+      <a href="{{ url_for('resident.new_request') }}" class="btn-primary" style="font-size:13px; padding:7px 14px;">
         <i class="bi bi-plus-lg"></i> New Request
       </a>
-      {% endif %}
-      {% if session.get('role') == 'resident' %}
       <span class="room-badge">
         <i class="bi bi-door-closed-fill"></i> Room {{ session.get('room_number', '—') }}
       </span>
@@ -116,10 +121,8 @@
     </div>
   </header>
 
-  <!-- Page content -->
   <main class="content-area">
 
-    <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div class="flash-container">
@@ -140,7 +143,7 @@
 </div>
 
 {% else %}
-<!--  Auth Pages (no sidebar) -->
+<!-- ── Auth Pages (no sidebar) ───────────────────────────────────────── -->
 <main>
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
@@ -160,16 +163,13 @@
 {% endif %}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
 <script>
-  // Sidebar toggle for mobile
   const toggle  = document.getElementById('sidebar-toggle');
   const sidebar = document.getElementById('sidebar');
   if (toggle && sidebar) {
     toggle.addEventListener('click', () => sidebar.classList.toggle('open'));
   }
 </script>
-
 {% block scripts %}{% endblock %}
 
 </body>
