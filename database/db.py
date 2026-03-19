@@ -2,32 +2,27 @@ import sqlite3
 import os
 from datetime import datetime
 
-# Path to the database file
 DATABASE = os.path.join(os.path.dirname(__file__), 'resifix.db')
 SCHEMA   = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 
 def get_connection():
-    """Create and return a database connection."""
     conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row  # lets us access columns by name
+    conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     return conn
 
 
 def init_db():
-    """Create all tables from schema.sql. Migrations run automatically."""
     conn = get_connection()
     with open(SCHEMA, 'r') as f:
         sql = f.read()
-    # Run each statement separately so ALTER TABLE errors don't stop everything
     for statement in sql.split(';'):
         statement = statement.strip()
         if statement:
             try:
                 conn.execute(statement)
             except sqlite3.OperationalError as e:
-                # Ignore "duplicate column" errors from ALTER TABLE migrations
                 if 'duplicate column' in str(e).lower():
                     pass
                 else:
@@ -39,9 +34,7 @@ def init_db():
 
 # ── RESIDENCE FUNCTIONS ────────────────────────────────────────────────────
 
-
 def get_all_residences():
-    """Get all active residences (for dropdowns)."""
     conn = get_connection()
     residences = conn.execute(
         "SELECT * FROM residences WHERE is_active = 1 ORDER BY name ASC"
@@ -49,94 +42,66 @@ def get_all_residences():
     conn.close()
     return residences
 
-
 def add_residence(name):
-    """Add a new residence building (admin only)."""
     conn = get_connection()
     try:
-        conn.execute(
-            "INSERT INTO residences (name) VALUES (?)", (name,)
-        )
+        conn.execute("INSERT INTO residences (name) VALUES (?)", (name,))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
-        return False  # name already exists
+        return False
     finally:
         conn.close()
 
-
 def set_residence_active(residence_id, is_active):
-    """Activate or deactivate a residence (admin only)."""
     conn = get_connection()
-    conn.execute(
-        "UPDATE residences SET is_active = ? WHERE id = ?", (is_active, residence_id)
-    )
+    conn.execute("UPDATE residences SET is_active = ? WHERE id = ?", (is_active, residence_id))
     conn.commit()
     conn.close()
 
 
 # ── USER FUNCTIONS ─────────────────────────────────────────────────────────
 
-
 def create_user(username, email, password, full_name, room_number,
                 role='resident', residence=None, specialization=None):
-    """Insert a new user into the database."""
     conn = get_connection()
     try:
         conn.execute("""
-            INSERT INTO users
-              (username, email, password, full_name, room_number, role, residence, specialization)
+            INSERT INTO users (username, email, password, full_name, room_number, role, residence, specialization)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (username, email, password, full_name, room_number,
-              role, residence, specialization))
+        """, (username, email, password, full_name, room_number, role, residence, specialization))
         conn.commit()
         return True
     except sqlite3.IntegrityError:
-        return False  # username or email already exists
+        return False
     finally:
         conn.close()
 
-
 def get_user_by_id(user_id):
-    """Get a single user by their ID."""
     conn = get_connection()
-    user = conn.execute(
-        "SELECT * FROM users WHERE id = ?", (user_id,)
-    ).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
     conn.close()
     return user
-
 
 def get_user_by_username(username):
-    """Get a single user by their username."""
     conn = get_connection()
-    user = conn.execute(
-        "SELECT * FROM users WHERE username = ?", (username,)
-    ).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE username = ?", (username,)).fetchone()
     conn.close()
     return user
-
 
 def get_user_by_email(email):
-    """Get a single user by their email."""
     conn = get_connection()
-    user = conn.execute(
-        "SELECT * FROM users WHERE email = ?", (email,)
-    ).fetchone()
+    user = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
     conn.close()
     return user
 
-
 def get_all_users():
-    """Get all users (admin use)."""
     conn = get_connection()
     users = conn.execute("SELECT * FROM users ORDER BY created_at DESC").fetchall()
     conn.close()
     return users
 
-
 def get_all_technicians():
-    """Get all active technicians."""
     conn = get_connection()
     technicians = conn.execute(
         "SELECT * FROM users WHERE role = 'technician' AND is_active = 1"
@@ -144,93 +109,71 @@ def get_all_technicians():
     conn.close()
     return technicians
 
-
 def get_available_technicians_for_request(residence, category):
-    """
-    Return technicians who are:
-    - Active
-    - Belong to the same residence as the request
-    - Have a matching specialization OR are 'general'
-    - NOT currently assigned to an incomplete request
-    """
-    # Map request category to technician specialization
     category_map = {
-        'Plumbing':    'plumbing',
-        'Electrical':  'electrical',
-        'Furniture':   'furniture',
-        'Appliance':   'appliance',
-        'Internet':    'internet',
-        'Cleaning':    'cleaning',
-        'Security':    'security',
-        'General':     'general',
+        'Plumbing': 'plumbing', 'Electrical': 'electrical', 'Furniture': 'furniture',
+        'Appliance': 'appliance', 'Internet': 'internet', 'Cleaning': 'cleaning',
+        'Security': 'security', 'General': 'general',
     }
     specialization = category_map.get(category, category.lower())
-
     conn = get_connection()
     technicians = conn.execute("""
         SELECT * FROM users
-        WHERE role = 'technician'
-          AND is_active = 1
-          AND residence = ?
+        WHERE role = 'technician' AND is_active = 1 AND residence = ?
           AND (specialization = ? OR specialization = 'general')
           AND id NOT IN (
               SELECT technician_id FROM maintenance_requests
-              WHERE status NOT IN ('resolved', 'closed', 'cancelled')
-                AND technician_id IS NOT NULL
+              WHERE status NOT IN ('resolved','closed','cancelled') AND technician_id IS NOT NULL
           )
     """, (residence, specialization)).fetchall()
     conn.close()
     return technicians
 
-
 def update_user(user_id, full_name, email, room_number):
-    """Update user account details."""
+    """Legacy — prefer update_profile."""
     conn = get_connection()
-    conn.execute("""
-        UPDATE users SET full_name = ?, email = ?, room_number = ?
-        WHERE id = ?
-    """, (full_name, email, room_number, user_id))
+    conn.execute("UPDATE users SET full_name=?, email=?, room_number=? WHERE id=?",
+                 (full_name, email, room_number, user_id))
     conn.commit()
     conn.close()
-
 
 def update_technician_profile(user_id, full_name, email):
-    """Update technician profile (name + email — residence/specialization managed by admin)."""
+    """Legacy — prefer update_profile."""
     conn = get_connection()
-    conn.execute("""
-        UPDATE users SET full_name = ?, email = ?
-        WHERE id = ?
-    """, (full_name, email, user_id))
+    conn.execute("UPDATE users SET full_name=?, email=? WHERE id=?", (full_name, email, user_id))
     conn.commit()
     conn.close()
 
+def update_profile(user_id, full_name, email,
+                   room_number=None, residence=None, specialization=None):
+    """Universal profile update for residents, technicians and admin edits."""
+    conn = get_connection()
+    conn.execute("UPDATE users SET full_name=?, email=? WHERE id=?", (full_name, email, user_id))
+    if room_number is not None:
+        conn.execute("UPDATE users SET room_number=? WHERE id=?", (room_number, user_id))
+    if residence is not None:
+        conn.execute("UPDATE users SET residence=? WHERE id=?", (residence, user_id))
+    if specialization is not None:
+        conn.execute("UPDATE users SET specialization=? WHERE id=?", (specialization, user_id))
+    conn.commit()
+    conn.close()
 
 def set_user_active(user_id, is_active):
-    """Activate or deactivate a user account (admin use)."""
     conn = get_connection()
-    conn.execute(
-        "UPDATE users SET is_active = ? WHERE id = ?", (is_active, user_id)
-    )
+    conn.execute("UPDATE users SET is_active=? WHERE id=?", (is_active, user_id))
     conn.commit()
     conn.close()
 
 
 # ── MAINTENANCE REQUEST FUNCTIONS ──────────────────────────────────────────
 
-
 def generate_ticket_number():
-    """Generate a unique ticket number e.g. TKT-00042."""
     conn = get_connection()
-    count = conn.execute(
-        "SELECT COUNT(*) FROM maintenance_requests"
-    ).fetchone()[0]
+    count = conn.execute("SELECT COUNT(*) FROM maintenance_requests").fetchone()[0]
     conn.close()
     return f"TKT-{str(count + 1).zfill(5)}"
 
-
-def create_request(resident_id, room_number, category, priority,
-                   title, description, residence=None):
-    """Create a new maintenance request."""
+def create_request(resident_id, room_number, category, priority, title, description, residence=None):
     conn = get_connection()
     ticket_no = generate_ticket_number()
     try:
@@ -238,282 +181,176 @@ def create_request(resident_id, room_number, category, priority,
             INSERT INTO maintenance_requests
               (ticket_no, resident_id, room_number, residence, category, priority, title, description)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (ticket_no, resident_id, room_number, residence,
-              category, priority, title, description))
+        """, (ticket_no, resident_id, room_number, residence, category, priority, title, description))
         conn.commit()
         return ticket_no
     finally:
         conn.close()
 
-
 def get_request_by_id(request_id):
-    """Get a single request by ID."""
     conn = get_connection()
-    req = conn.execute(
-        "SELECT * FROM maintenance_requests WHERE id = ?", (request_id,)
-    ).fetchone()
+    req = conn.execute("SELECT * FROM maintenance_requests WHERE id=?", (request_id,)).fetchone()
     conn.close()
     return req
 
-
 def get_requests_by_resident(resident_id):
-    """Get all requests submitted by a specific resident."""
     conn = get_connection()
-    requests = conn.execute("""
-        SELECT * FROM maintenance_requests
-        WHERE resident_id = ?
-        ORDER BY submitted_at DESC
-    """, (resident_id,)).fetchall()
+    requests = conn.execute(
+        "SELECT * FROM maintenance_requests WHERE resident_id=? ORDER BY submitted_at DESC",
+        (resident_id,)
+    ).fetchall()
     conn.close()
     return requests
-
 
 def get_requests_by_technician(technician_id):
-    """Get all requests assigned to a specific technician."""
     conn = get_connection()
-    requests = conn.execute("""
-        SELECT * FROM maintenance_requests
-        WHERE technician_id = ?
-        ORDER BY submitted_at DESC
-    """, (technician_id,)).fetchall()
+    requests = conn.execute(
+        "SELECT * FROM maintenance_requests WHERE technician_id=? ORDER BY submitted_at DESC",
+        (technician_id,)
+    ).fetchall()
     conn.close()
     return requests
-
 
 def get_all_requests():
-    """Get all requests (admin use)."""
     conn = get_connection()
-    requests = conn.execute("""
-        SELECT * FROM maintenance_requests
-        ORDER BY submitted_at DESC
-    """).fetchall()
+    requests = conn.execute(
+        "SELECT * FROM maintenance_requests ORDER BY submitted_at DESC"
+    ).fetchall()
     conn.close()
     return requests
 
-
 def update_request_status(request_id, status):
-    """Update the status of a request."""
     conn = get_connection()
     resolved_at = datetime.now() if status == 'resolved' else None
     conn.execute("""
-        UPDATE maintenance_requests
-        SET status = ?, updated_at = ?, resolved_at = ?
-        WHERE id = ?
+        UPDATE maintenance_requests SET status=?, updated_at=?, resolved_at=? WHERE id=?
     """, (status, datetime.now(), resolved_at, request_id))
     conn.commit()
     conn.close()
 
-
 def assign_technician(request_id, technician_id):
-    """Assign a technician to a request and set status to assigned."""
     conn = get_connection()
     conn.execute("""
-        UPDATE maintenance_requests
-        SET technician_id = ?, status = 'assigned', updated_at = ?
-        WHERE id = ?
+        UPDATE maintenance_requests SET technician_id=?, status='assigned', updated_at=? WHERE id=?
     """, (technician_id, datetime.now(), request_id))
     conn.commit()
     conn.close()
 
-
 def mark_worsening(request_id, is_worsening):
-    """Mark a request as getting worse."""
     conn = get_connection()
-    conn.execute(
-        "UPDATE maintenance_requests SET is_worsening = ? WHERE id = ?",
-        (is_worsening, request_id)
-    )
+    conn.execute("UPDATE maintenance_requests SET is_worsening=? WHERE id=?", (is_worsening, request_id))
     conn.commit()
     conn.close()
 
 
 # ── COMMENT FUNCTIONS ──────────────────────────────────────────────────────
 
-
 def add_comment(request_id, author_id, body, is_internal=False):
-    """Add a comment or internal note to a request."""
     conn = get_connection()
-    conn.execute("""
-        INSERT INTO comments (request_id, author_id, body, is_internal)
-        VALUES (?, ?, ?, ?)
-    """, (request_id, author_id, body, is_internal))
+    conn.execute("INSERT INTO comments (request_id, author_id, body, is_internal) VALUES (?,?,?,?)",
+                 (request_id, author_id, body, is_internal))
     conn.commit()
     conn.close()
 
-
 def get_comments_by_request(request_id, include_internal=False):
-    """Get all comments for a request."""
     conn = get_connection()
     if include_internal:
         comments = conn.execute(
-            "SELECT * FROM comments WHERE request_id = ? ORDER BY created_at ASC",
-            (request_id,)
+            "SELECT * FROM comments WHERE request_id=? ORDER BY created_at ASC", (request_id,)
         ).fetchall()
     else:
-        comments = conn.execute("""
-            SELECT * FROM comments
-            WHERE request_id = ? AND is_internal = 0
-            ORDER BY created_at ASC
-        """, (request_id,)).fetchall()
+        comments = conn.execute(
+            "SELECT * FROM comments WHERE request_id=? AND is_internal=0 ORDER BY created_at ASC",
+            (request_id,)
+        ).fetchall()
     conn.close()
     return comments
 
 
 # ── NOTIFICATION FUNCTIONS ─────────────────────────────────────────────────
 
-
 def create_notification(user_id, message, request_id=None, type='in_app'):
-    """Create a notification for a user."""
     conn = get_connection()
-    conn.execute("""
-        INSERT INTO notifications (user_id, request_id, message, type)
-        VALUES (?, ?, ?, ?)
-    """, (user_id, request_id, message, type))
+    conn.execute("INSERT INTO notifications (user_id, request_id, message, type) VALUES (?,?,?,?)",
+                 (user_id, request_id, message, type))
     conn.commit()
     conn.close()
 
-
 def get_notifications_by_user(user_id):
-    """Get all notifications for a user."""
     conn = get_connection()
-    notifications = conn.execute("""
-        SELECT * FROM notifications
-        WHERE user_id = ?
-        ORDER BY created_at DESC
-    """, (user_id,)).fetchall()
+    notifications = conn.execute(
+        "SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC", (user_id,)
+    ).fetchall()
     conn.close()
     return notifications
 
-
 def get_unread_count(user_id):
-    """Get count of unread notifications for a user."""
     conn = get_connection()
-    count = conn.execute("""
-        SELECT COUNT(*) FROM notifications
-        WHERE user_id = ? AND is_read = 0
-    """, (user_id,)).fetchone()[0]
+    count = conn.execute(
+        "SELECT COUNT(*) FROM notifications WHERE user_id=? AND is_read=0", (user_id,)
+    ).fetchone()[0]
     conn.close()
     return count
 
-
 def mark_notifications_read(user_id):
-    """Mark all notifications as read for a user."""
     conn = get_connection()
-    conn.execute(
-        "UPDATE notifications SET is_read = 1 WHERE user_id = ?", (user_id,)
-    )
+    conn.execute("UPDATE notifications SET is_read=1 WHERE user_id=?", (user_id,))
     conn.commit()
     conn.close()
 
 
 # ── RATINGS FUNCTIONS ──────────────────────────────────────────────────────
 
-
 def create_rating(request_id, resident_id, technician_id, score, review):
-    """Submit a rating for a technician after request resolution."""
     conn = get_connection()
-    conn.execute("""
-        INSERT INTO ratings (request_id, resident_id, technician_id, score, review)
-        VALUES (?, ?, ?, ?, ?)
-    """, (request_id, resident_id, technician_id, score, review))
+    conn.execute("INSERT INTO ratings (request_id, resident_id, technician_id, score, review) VALUES (?,?,?,?,?)",
+                 (request_id, resident_id, technician_id, score, review))
     conn.commit()
     conn.close()
 
-
 def get_ratings_by_technician(technician_id):
-    """Get all ratings for a specific technician."""
     conn = get_connection()
-    ratings = conn.execute(
-        "SELECT * FROM ratings WHERE technician_id = ?", (technician_id,)
-    ).fetchall()
+    ratings = conn.execute("SELECT * FROM ratings WHERE technician_id=?", (technician_id,)).fetchall()
     conn.close()
     return ratings
 
-
 def get_average_rating(technician_id):
-    """Get average rating score for a technician."""
     conn = get_connection()
-    result = conn.execute(
-        "SELECT AVG(score) FROM ratings WHERE technician_id = ?", (technician_id,)
-    ).fetchone()[0]
+    result = conn.execute("SELECT AVG(score) FROM ratings WHERE technician_id=?", (technician_id,)).fetchone()[0]
     conn.close()
     return round(result, 1) if result else 0.0
 
 
 # ── IMAGES FUNCTIONS ───────────────────────────────────────────────────────
 
-
 def save_image(request_id, file_path):
-    """Save an uploaded image path linked to a request."""
     conn = get_connection()
-    conn.execute(
-        "INSERT INTO images (request_id, file_path) VALUES (?, ?)",
-        (request_id, file_path)
-    )
+    conn.execute("INSERT INTO images (request_id, file_path) VALUES (?,?)", (request_id, file_path))
     conn.commit()
     conn.close()
 
-
 def get_images_by_request(request_id):
-    """Get all images for a specific request."""
     conn = get_connection()
-    images = conn.execute(
-        "SELECT * FROM images WHERE request_id = ?", (request_id,)
-    ).fetchall()
+    images = conn.execute("SELECT * FROM images WHERE request_id=?", (request_id,)).fetchall()
     conn.close()
     return images
 
 
-# ── SEED DATA (for testing only) ───────────────────────────────────────────
-
+# ── SEED DATA ──────────────────────────────────────────────────────────────
 
 def seed_data():
-    """Insert test data so teams can test their features."""
     from werkzeug.security import generate_password_hash
-
-    # Seed residences first — admin manages these in production
     add_residence('Residence A')
     add_residence('Residence B')
     add_residence('Residence C')
     add_residence('Residence D')
-
-    # Test users — now include residence and specialization
-    create_user('admin1', 'admin@resifix.com',
-                generate_password_hash('admin123'),
-                'Admin User', None, 'admin',
-                residence='Residence A')
-
-    create_user('tech1', 'tech@resifix.com',
-                generate_password_hash('tech123'),
-                'John Technician', None, 'technician',
-                residence='Residence A', specialization='plumbing')
-
-    create_user('tech2', 'tech2@resifix.com',
-                generate_password_hash('tech123'),
-                'Sara Technician', None, 'technician',
-                residence='Residence A', specialization='electrical')
-
-    create_user('student1', 'student@resifix.com',
-                generate_password_hash('student123'),
-                'Jane Resident', 'A101', 'resident',
-                residence='Residence A')
-
-    # Test requests — now include residence
-    create_request(4, 'A101', 'Plumbing', 'high',
-                   'Leaking tap in bathroom',
-                   'The tap has been leaking for 2 days',
-                   residence='Residence A')
-
-    create_request(4, 'A101', 'Electrical', 'medium',
-                   'Faulty light switch',
-                   'Light switch in bedroom is not working',
-                   residence='Residence A')
-
+    create_user('admin1','admin@resifix.com',generate_password_hash('admin123'),'Admin User',None,'admin',residence='Residence A')
+    create_user('tech1','tech@resifix.com',generate_password_hash('tech123'),'John Technician',None,'technician',residence='Residence A',specialization='plumbing')
+    create_user('tech2','tech2@resifix.com',generate_password_hash('tech123'),'Sara Technician',None,'technician',residence='Residence A',specialization='electrical')
+    create_user('student1','student@resifix.com',generate_password_hash('student123'),'Jane Resident','A101','resident',residence='Residence A')
+    create_request(4,'A101','Plumbing','high','Leaking tap in bathroom','The tap has been leaking for 2 days',residence='Residence A')
+    create_request(4,'A101','Electrical','medium','Faulty light switch','Light switch in bedroom is not working',residence='Residence A')
     print("Seed data inserted successfully.")
-
-
-# ── RUN DIRECTLY TO INITIALIZE DATABASE ───────────────────────────────────
-
 
 if __name__ == '__main__':
     init_db()

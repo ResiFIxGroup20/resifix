@@ -1,0 +1,204 @@
+{% extends 'base.html' %}
+{% block title %}{{ user['full_name'] }} — ResiFix{% endblock %}
+{% block page_title %}User Details{% endblock %}
+
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="{{ url_for('admin.manage_users') }}" class="btn-ghost" style="padding:6px 14px; font-size:13px;">
+    <i class="bi bi-arrow-left"></i> Back to Users
+  </a>
+</div>
+
+<div class="detail-layout">
+
+  <!-- ── Left: Edit form ───────────────────────────────────────────────── -->
+  <div>
+
+    <!-- Profile Header -->
+    <div style="
+      background: linear-gradient(135deg, var(--bg-2) 0%, #0f1e3d 100%);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: relative;
+      overflow: hidden;
+    ">
+      <div style="position:absolute; right:-30px; top:-30px; width:160px; height:160px; border-radius:50%;
+        background: radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%); pointer-events:none;"></div>
+
+      <div style="width:72px; height:72px; border-radius:50%; flex-shrink:0;
+        background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+        display:flex; align-items:center; justify-content:center; font-size:32px;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.3); position:relative; z-index:1;">
+        {% if user['role'] == 'technician' %}🔧{% elif user['role'] == 'admin' %}⚙️{% else %}🎓{% endif %}
+      </div>
+
+      <div style="position:relative; z-index:1;">
+        <div style="font-size:20px; font-weight:800; letter-spacing:-0.02em;">{{ user['full_name'] }}</div>
+        <div style="color:var(--text-muted); font-size:13px; margin-top:2px;">@{{ user['username'] }}</div>
+        <div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;">
+          <span class="role-badge role-{{ user['role'] }}">{{ user['role']|title }}</span>
+          {% if user['residence'] %}
+          <span style="background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25);
+            border-radius:20px; padding:3px 10px; font-size:11px; color:var(--success); font-weight:600;">
+            <i class="bi bi-building"></i> {{ user['residence'] }}
+          </span>
+          {% endif %}
+          <span style="background:{% if user['is_active'] %}rgba(34,197,94,0.1){% else %}rgba(239,68,68,0.1){% endif %};
+            border:1px solid {% if user['is_active'] %}rgba(34,197,94,0.25){% else %}rgba(239,68,68,0.25){% endif %};
+            border-radius:20px; padding:3px 10px; font-size:11px;
+            color:{% if user['is_active'] %}var(--success){% else %}var(--danger){% endif %}; font-weight:600;">
+            {{ 'Active' if user['is_active'] else 'Inactive' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Form -->
+    <div class="detail-main">
+      <div style="font-weight:700; font-size:14px; margin-bottom:20px; display:flex; align-items:center; gap:8px;">
+        <i class="bi bi-pencil-fill" style="color:var(--accent);"></i> Edit Account Details
+      </div>
+
+      <form method="POST">
+        <input type="hidden" name="action" value="update">
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div class="form-group-custom">
+            <label class="form-label-custom">Full Name *</label>
+            <input type="text" name="full_name" class="form-control-custom"
+                   style="padding-left:12px;" value="{{ user['full_name'] }}" required>
+          </div>
+          <div class="form-group-custom">
+            <label class="form-label-custom">Email *</label>
+            <input type="email" name="email" class="form-control-custom"
+                   style="padding-left:12px;" value="{{ user['email'] }}" required>
+          </div>
+        </div>
+
+        <!-- Username — read only -->
+        <div class="form-group-custom">
+          <label class="form-label-custom">Username</label>
+          <input type="text" class="form-control-custom"
+                 style="padding-left:12px; opacity:0.5; cursor:not-allowed;"
+                 value="{{ user['username'] }}" disabled>
+        </div>
+
+        <!-- Residence -->
+        <div class="form-group-custom">
+          <label class="form-label-custom">Residence Building</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-building-fill input-icon"></i>
+            <select name="residence" class="form-control-custom" style="padding-left:36px;">
+              <option value="">— None —</option>
+              {% for res in residences %}
+              <option value="{{ res['name'] }}" {% if user['residence'] == res['name'] %}selected{% endif %}>
+                {{ res['name'] }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- Room Number (residents only) -->
+        {% if user['role'] == 'resident' %}
+        <div class="form-group-custom">
+          <label class="form-label-custom">Room Number</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-door-closed-fill input-icon"></i>
+            <input type="text" name="room_number" class="form-control-custom"
+                   placeholder="e.g. A101" value="{{ user['room_number'] or '' }}">
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Specialization (technicians only) -->
+        {% if user['role'] == 'technician' %}
+        <div class="form-group-custom">
+          <label class="form-label-custom">Specialization</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-wrench-fill input-icon"></i>
+            <select name="specialization" class="form-control-custom" style="padding-left:36px;">
+              <option value="">— Select —</option>
+              {% for spec in ['plumbing','electrical','furniture','appliance','internet','cleaning','security','general'] %}
+              <option value="{{ spec }}" {% if user['specialization'] == spec %}selected{% endif %}>
+                {{ spec|title }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="form-actions">
+          <a href="{{ url_for('admin.manage_users') }}" class="btn-ghost">Cancel</a>
+          <button type="submit" class="btn-primary">
+            <i class="bi bi-check-lg"></i> Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- ── Right: Info + Actions ─────────────────────────────────────────── -->
+  <div class="detail-sidebar">
+
+    <!-- Quick actions -->
+    <div class="action-card">
+      <div class="action-card-title">
+        <i class="bi bi-shield-fill" style="color:var(--accent);"></i> Account Actions
+      </div>
+
+      {% if user['id'] != session['user_id'] %}
+      <form method="POST"
+            onsubmit="return confirm('{% if user['is_active'] %}Deactivate{% else %}Activate{% endif %} {{ user['full_name'] }}?')">
+        <input type="hidden" name="action" value="toggle">
+        <button type="submit"
+                class="{% if user['is_active'] %}btn-outline-danger{% else %}btn-primary{% endif %} w-100">
+          <i class="bi bi-person-{% if user['is_active'] %}dash{% else %}check{% endif %}-fill"></i>
+          {% if user['is_active'] %}Deactivate Account{% else %}Activate Account{% endif %}
+        </button>
+      </form>
+      {% else %}
+      <p style="font-size:12px; color:var(--text-muted);">This is your own account.</p>
+      {% endif %}
+    </div>
+
+    <!-- Account info -->
+    <div class="info-card">
+      <div class="info-row">
+        <span>User ID</span>
+        <span class="font-mono">#{{ user['id'] }}</span>
+      </div>
+      <div class="info-row">
+        <span>Role</span>
+        <span class="role-badge role-{{ user['role'] }}">{{ user['role']|title }}</span>
+      </div>
+      <div class="info-row">
+        <span>Status</span>
+        <span style="color:{% if user['is_active'] %}var(--success){% else %}var(--danger){% endif %}; font-weight:600; font-size:12px;">
+          {{ 'Active' if user['is_active'] else 'Inactive' }}
+        </span>
+      </div>
+      <div class="info-row">
+        <span>Joined</span>
+        <span>{{ user['created_at'][:10] if user['created_at'] else '—' }}</span>
+      </div>
+      {% if user['role'] == 'technician' and user['specialization'] %}
+      <div class="info-row">
+        <span>Specialization</span>
+        <span>{{ user['specialization']|title }}</span>
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

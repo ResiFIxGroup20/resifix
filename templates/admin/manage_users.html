@@ -3,7 +3,6 @@
 {% block title %}Manage Users — ResiFix{% endblock %}
 {% block page_title %}Manage Users{% endblock %}
 
-
 {% block content %}
 
 <!-- ── Role filter tabs ────────────────────────────────────────────────── -->
@@ -20,7 +19,7 @@
   {% endfor %}
 </ul>
 
-<!-- ── Search bar (username / email) ─────────────────────────────────── -->
+<!-- ── Search bar ─────────────────────────────────────────────────────── -->
 <form method="GET" action="{{ url_for('admin.manage_users') }}" class="mb-3">
   {% if role_filter %}<input type="hidden" name="role" value="{{ role_filter }}">{% endif %}
   <input type="hidden" name="page" value="1">
@@ -45,7 +44,7 @@
   {% endif %}
 </form>
 
-<!-- Users Table -->
+<!-- ── Users Table ────────────────────────────────────────────────────── -->
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <span class="fw-semibold">Users</span>
@@ -77,7 +76,6 @@
           <td class="text-muted small">{{ u.id }}</td>
           <td><strong>{{ u.full_name }}</strong></td>
           <td>
-            <!-- Highlight matched search term in username -->
             {% if search and search in u.username.lower() %}
               {% set idx = u.username.lower().find(search) %}
               {{ u.username[:idx] }}<mark>{{ u.username[idx:idx+search|length] }}</mark>{{ u.username[idx+search|length:] }}
@@ -86,7 +84,6 @@
             {% endif %}
           </td>
           <td class="small">
-            <!-- Highlight matched search term in email -->
             {% if search and search in u.email.lower() %}
               {% set idx = u.email.lower().find(search) %}
               {{ u.email[:idx] }}<mark>{{ u.email[idx:idx+search|length] }}</mark>{{ u.email[idx+search|length:] }}
@@ -108,23 +105,36 @@
             {% endif %}
           </td>
           <td class="small text-muted">{{ u.created_at[:10] if u.created_at else '—' }}</td>
-          <td>
-            {% if u.id != session.user_id %}
-            <form method="POST"
-                  action="{{ url_for('admin.toggle_user', user_id=u.id) }}"
-                  onsubmit="return confirm('{% if u.is_active %}Deactivate{% else %}Activate{% endif %} {{ u.full_name }}?')">
 
-              <button type="submit" class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
-                {% if u.is_active %}
-                  <i class="bi bi-person-dash"></i> Deactivate
-                {% else %}
-                  <i class="bi bi-person-check"></i> Activate
-                {% endif %}
-              </button>
-            </form>
-            {% else %}
+          <!-- Action column — View button + Deactivate button -->
+          <td>
+            <div style="display:flex; gap:6px; align-items:center;">
+
+              <!-- View / Edit -->
+              <a href="{{ url_for('admin.user_detail', user_id=u.id) }}"
+                 class="btn btn-sm btn-outline-primary" title="View & Edit">
+                <i class="bi bi-person-lines-fill"></i> View
+              </a>
+
+              <!-- Deactivate / Activate -->
+              {% if u.id != session.user_id %}
+              <form method="POST"
+                    action="{{ url_for('admin.toggle_user', user_id=u.id) }}"
+                    onsubmit="return confirm('{% if u.is_active %}Deactivate{% else %}Activate{% endif %} {{ u.full_name }}?')">
+                <button type="submit"
+                        class="btn btn-sm {% if u.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                  {% if u.is_active %}
+                    <i class="bi bi-person-dash"></i> Deactivate
+                  {% else %}
+                    <i class="bi bi-person-check"></i> Activate
+                  {% endif %}
+                </button>
+              </form>
+              {% else %}
               <span class="small text-muted">You</span>
-            {% endif %}
+              {% endif %}
+
+            </div>
           </td>
         </tr>
         {% endfor %}
@@ -132,7 +142,7 @@
     </table>
   </div>
 
-  <!-- Pagination  -->
+  <!-- Pagination -->
   {% if total_pages > 1 %}
   <div class="card-footer d-flex justify-content-between align-items-center">
     <span class="text-muted small">
@@ -140,14 +150,12 @@
     </span>
     <nav>
       <ul class="pagination pagination-sm mb-0">
-
         <li class="page-item {% if page == 1 %}disabled{% endif %}">
           <a class="page-link"
              href="{{ url_for('admin.manage_users', page=page-1, role=role_filter, search=search) }}">
             <i class="bi bi-chevron-left"></i>
           </a>
         </li>
-
         {% for p in range(1, total_pages + 1) %}
           {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
             <li class="page-item {% if p == page %}active{% endif %}">
@@ -160,15 +168,12 @@
             <li class="page-item disabled"><span class="page-link">…</span></li>
           {% endif %}
         {% endfor %}
-
-        
         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
           <a class="page-link"
              href="{{ url_for('admin.manage_users', page=page+1, role=role_filter, search=search) }}">
             <i class="bi bi-chevron-right"></i>
           </a>
         </li>
-
       </ul>
     </nav>
   </div>

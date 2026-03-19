@@ -17,7 +17,8 @@ from database.db import (
     get_available_technicians_for_request,
     get_all_residences,
     add_residence,
-    set_residence_active
+    set_residence_active,
+    update_profile
 )
 from functools import wraps
 import math
@@ -49,11 +50,11 @@ def admin_dashboard():
     all_requests = get_all_requests()
     all_users    = get_all_users()
 
-    status_filter   = request.args.get('status',   '').strip()
-    priority_filter = request.args.get('priority', '').strip()
-    residence_filter= request.args.get('residence','').strip()
-    room_search     = request.args.get('room',     '').strip().lower()
-    page            = max(1, int(request.args.get('page', 1) or 1))
+    status_filter    = request.args.get('status',    '').strip()
+    priority_filter  = request.args.get('priority',  '').strip()
+    residence_filter = request.args.get('residence', '').strip()
+    room_search      = request.args.get('room',      '').strip().lower()
+    page             = max(1, int(request.args.get('page', 1) or 1))
 
     filtered = all_requests
     if status_filter:
@@ -84,17 +85,11 @@ def admin_dashboard():
     residences = get_all_residences()
 
     return render_template('admin/dashboard.html',
-        requests         = paginated,
-        stats            = stats,
-        user_map         = user_map,
-        residences       = residences,
-        status_filter    = status_filter,
-        priority_filter  = priority_filter,
-        residence_filter = residence_filter,
-        room_search      = room_search,
-        page             = page,
-        total_pages      = total_pages,
-        total_results    = total_results,
+        requests=paginated, stats=stats, user_map=user_map,
+        residences=residences, status_filter=status_filter,
+        priority_filter=priority_filter, residence_filter=residence_filter,
+        room_search=room_search, page=page,
+        total_pages=total_pages, total_results=total_results,
     )
 
 
@@ -111,12 +106,10 @@ def request_detail(request_id):
         flash('Request not found.', 'danger')
         return redirect(url_for('admin.admin_dashboard'))
 
-    # ── Filtered technicians — same residence + matching specialization ──
     technicians = get_available_technicians_for_request(
         residence = req['residence'] or '',
         category  = req['category']  or ''
     )
-
     comments = get_comments_by_request(request_id, include_internal=True)
 
     if request.method == 'POST':
@@ -150,10 +143,8 @@ def request_detail(request_id):
             return redirect(url_for('admin.request_detail', request_id=request_id))
 
     return render_template('admin/request_detail.html',
-        req         = req,
-        technicians = technicians,
-        user_map    = user_map,
-        comments    = comments,
+        req=req, technicians=technicians,
+        user_map=user_map, comments=comments,
     )
 
 
@@ -186,14 +177,63 @@ def manage_users():
     paginated     = filtered[(page-1)*PER_PAGE : page*PER_PAGE]
 
     return render_template('admin/manage_users.html',
-        users         = paginated,
-        counts        = counts,
-        role_filter   = role_filter,
-        search        = search,
-        page          = page,
-        total_pages   = total_pages,
-        total_results = total_results,
+        users=paginated, counts=counts, role_filter=role_filter,
+        search=search, page=page, total_pages=total_pages,
+        total_results=total_results,
     )
+
+
+# ── User Detail / Edit ─────────────────────────────────────────────────────
+
+@admin.route('/admin/users/<int:user_id>', methods=['GET', 'POST'])
+@admin_required
+def user_detail(user_id):
+    """View and edit a single user's account details."""
+    user       = get_user_by_id(user_id)
+    residences = get_all_residences()
+
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('admin.manage_users'))
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+
+        if action == 'toggle':
+            if user_id == session['user_id']:
+                flash('You cannot deactivate your own account.', 'warning')
+            else:
+                new_state = 0 if user['is_active'] else 1
+                set_user_active(user_id, new_state)
+                flash(f'{"Activated" if new_state else "Deactivated"} successfully.', 'success')
+            return redirect(url_for('admin.user_detail', user_id=user_id))
+
+        if action == 'update':
+            full_name      = request.form.get('full_name',      '').strip()
+            email          = request.form.get('email',          '').strip()
+            residence      = request.form.get('residence',      '').strip()
+            room_number    = request.form.get('room_number',    '').strip()
+            specialization = request.form.get('specialization', '').strip()
+
+            if not full_name:
+                flash('Full name cannot be empty.', 'danger')
+                return redirect(url_for('admin.user_detail', user_id=user_id))
+            if not email or '@' not in email:
+                flash('Please enter a valid email.', 'danger')
+                return redirect(url_for('admin.user_detail', user_id=user_id))
+
+            update_profile(
+                user_id,
+                full_name,
+                email,
+                room_number    = room_number    if user['role'] == 'resident'   else None,
+                residence      = residence,
+                specialization = specialization if user['role'] == 'technician' else None
+            )
+            flash(f"{full_name}'s details updated.", 'success')
+            return redirect(url_for('admin.user_detail', user_id=user_id))
+
+    return render_template('admin/user_detail.html', user=user, residences=residences)
 
 
 # ── Toggle User Active ─────────────────────────────────────────────────────
@@ -228,10 +268,7 @@ def manage_residences():
             flash('Residence name cannot be empty.', 'warning')
         else:
             success = add_residence(name)
-            if success:
-                flash(f'"{name}" added successfully.', 'success')
-            else:
-                flash(f'"{name}" already exists.', 'warning')
+            flash(f'"{name}" {"added" if success else "already exists"}.', 'success' if success else 'warning')
         return redirect(url_for('admin.manage_residences'))
 
     residences = get_all_residences()
@@ -245,7 +282,7 @@ def manage_residences():
 def toggle_residence(residence_id):
     from database.db import get_connection
     conn = get_connection()
-    res  = conn.execute("SELECT * FROM residences WHERE id = ?", (residence_id,)).fetchone()
+    res  = conn.execute("SELECT * FROM residences WHERE id=?", (residence_id,)).fetchone()
     conn.close()
 
     if not res:

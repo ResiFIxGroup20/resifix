@@ -5,7 +5,7 @@
 {% block content %}
 
 <div style="margin-bottom:20px;">
-  <a href="{{ url_for('technician.technician_dashboard') }}" class="btn-ghost" style="padding:6px 14px; font-size:13px;">
+  <a href="{{ url_for('resident.dashboard') }}" class="btn-ghost" style="padding:6px 14px; font-size:13px;">
     <i class="bi bi-arrow-left"></i> Back to Dashboard
   </a>
 </div>
@@ -37,22 +37,24 @@
 
       <div style="
         width:72px; height:72px; border-radius:50%; flex-shrink:0;
-        background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+        background: linear-gradient(135deg, var(--accent) 0%, #0ea5e9 100%);
         display:flex; align-items:center; justify-content:center;
         font-size:32px;
         box-shadow: 0 0 0 3px rgba(37,99,235,0.3);
         position:relative; z-index:1;
-      ">🔧</div>
+      ">🎓</div>
 
       <div style="position:relative; z-index:1;">
         <div style="font-size:20px; font-weight:800; letter-spacing:-0.02em;">{{ user['full_name'] }}</div>
         <div style="color:var(--text-muted); font-size:13px; margin-top:2px;">@{{ user['username'] }}</div>
         <div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;">
+          {% if user['room_number'] %}
           <span style="
             background:var(--accent-dim); border:1px solid rgba(37,99,235,0.25);
             border-radius:20px; padding:3px 10px; font-size:11px; color:var(--primary); font-weight:600;">
-            <i class="bi bi-wrench"></i> {{ user['specialization']|title if user['specialization'] else 'General' }}
+            <i class="bi bi-door-closed"></i> Room {{ user['room_number'] }}
           </span>
+          {% endif %}
           {% if user['residence'] %}
           <span style="
             background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25);
@@ -99,6 +101,18 @@
           <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Username cannot be changed.</div>
         </div>
 
+        <!-- Room Number — editable for residents -->
+        <div class="form-group-custom">
+          <label class="form-label-custom">Room Number</label>
+          <div class="input-icon-wrap">
+            <i class="bi bi-door-closed-fill input-icon"></i>
+            <input type="text" name="room_number" class="form-control-custom"
+                   placeholder="e.g. A101"
+                   value="{{ user['room_number'] or '' }}">
+          </div>
+          <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Update if you have moved rooms.</div>
+        </div>
+
         <!-- Residence — editable dropdown -->
         <div class="form-group-custom">
           <label class="form-label-custom">Residence Building</label>
@@ -113,20 +127,11 @@
               {% endfor %}
             </select>
           </div>
-          <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Update if you have been reassigned.</div>
-        </div>
-
-        <!-- Specialization — read only, managed by admin -->
-        <div class="form-group-custom">
-          <label class="form-label-custom">Specialization</label>
-          <input type="text" class="form-control-custom"
-                 style="padding-left:12px; opacity:0.5; cursor:not-allowed;"
-                 value="{{ user['specialization']|title if user['specialization'] else '—' }}" disabled>
-          <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Managed by admin.</div>
+          <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Update if you have moved buildings.</div>
         </div>
 
         <div class="form-actions">
-          <a href="{{ url_for('technician.technician_dashboard') }}" class="btn-ghost">Cancel</a>
+          <a href="{{ url_for('resident.dashboard') }}" class="btn-ghost">Cancel</a>
           <button type="submit" class="btn-primary">
             <i class="bi bi-check-lg"></i> Save Changes
           </button>
@@ -141,25 +146,18 @@
 
     <div class="action-card">
       <div class="action-card-title">
-        <i class="bi bi-bar-chart-fill" style="color:var(--accent);"></i> Performance
+        <i class="bi bi-bar-chart-fill" style="color:var(--accent);"></i> My Requests
       </div>
-
-      <div style="margin-bottom:16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-          <span style="font-size:12px; color:var(--text-muted);">Avg Rating</span>
-          <span style="font-size:13px; font-weight:700; color:var(--warning);">⭐ {{ avg_rating }}/5</span>
-        </div>
-        <div style="height:6px; background:var(--bg-3); border-radius:3px; overflow:hidden;">
-          <div style="height:100%; width:{{ (avg_rating / 5 * 100)|round }}%; background:var(--warning); border-radius:3px; transition:width 0.4s;"></div>
-        </div>
-        <div style="font-size:11px; color:var(--text-faint); margin-top:3px;">{{ total_ratings }} rating{{ 's' if total_ratings != 1 }}</div>
-      </div>
-
       <div style="display:flex; flex-direction:column; gap:10px;">
         <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px;
           background:var(--bg-3); border-radius:var(--radius-sm);">
-          <span style="font-size:12px; color:var(--text-muted);"><i class="bi bi-clipboard-check me-2"></i>Total Tasks</span>
+          <span style="font-size:12px; color:var(--text-muted);"><i class="bi bi-clipboard-check me-2"></i>Total</span>
           <span style="font-weight:700; font-size:14px;">{{ stats.total }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px;
+          background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.15); border-radius:var(--radius-sm);">
+          <span style="font-size:12px; color:var(--warning);"><i class="bi bi-clock-history me-2"></i>Pending</span>
+          <span style="font-weight:700; font-size:14px; color:var(--warning);">{{ stats.pending }}</span>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px;
           background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.15); border-radius:var(--radius-sm);">
@@ -181,7 +179,7 @@
       </div>
       <div class="info-row">
         <span>Role</span>
-        <span class="role-badge role-technician">Technician</span>
+        <span class="role-badge role-resident">Student</span>
       </div>
       <div class="info-row">
         <span>Status</span>

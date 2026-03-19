@@ -38,7 +38,7 @@
     </a>
     <div class="nav-divider">Management</div>
     <a href="{{ url_for('admin.manage_users') }}"
-       class="nav-link {% if request.endpoint == 'admin.manage_users' %}active{% endif %}">
+       class="nav-link {% if request.endpoint in ['admin.manage_users','admin.user_detail'] %}active{% endif %}">
       <i class="bi bi-people-fill"></i> Users
     </a>
     <a href="{{ url_for('admin.manage_residences') }}"
@@ -64,6 +64,11 @@
        class="nav-link {% if request.args.get('status') == 'resolved' %}active{% endif %}">
       <i class="bi bi-check-circle-fill"></i> Resolved
     </a>
+    <div class="nav-divider">Account</div>
+    <a href="{{ url_for('technician.profile') }}"
+       class="nav-link {% if request.endpoint == 'technician.profile' %}active{% endif %}">
+      <i class="bi bi-person-circle"></i> My Profile
+    </a>
 
     {% else %}
     <!-- Resident Navigation -->
@@ -78,6 +83,11 @@
     <a href="{{ url_for('resident.notifications') }}"
        class="nav-link {% if request.endpoint == 'resident.notifications' %}active{% endif %}">
       <i class="bi bi-bell-fill"></i> Notifications
+    </a>
+    <div class="nav-divider">Account</div>
+    <a href="{{ url_for('resident.profile') }}"
+       class="nav-link {% if request.endpoint == 'resident.profile' %}active{% endif %}">
+      <i class="bi bi-person-circle"></i> My Profile
     </a>
     {% endif %}
 
@@ -96,6 +106,18 @@
           onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 0 2px var(--accent)';"
           onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 0 0 2px transparent';">
           🔧
+        </div>
+      </a>
+      {% elif session.get('role') == 'resident' %}
+      <a href="{{ url_for('resident.profile') }}" title="View Profile" style="text-decoration:none; flex-shrink:0;">
+        <div class="user-avatar" style="
+          background: linear-gradient(135deg, var(--accent) 0%, #0ea5e9 100%);
+          color: #fff; font-size:16px; cursor:pointer;
+          transition: transform 0.15s, box-shadow 0.15s;
+          box-shadow: 0 0 0 2px transparent;"
+          onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 0 2px var(--accent)';"
+          onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 0 0 2px transparent';">
+          🎓
         </div>
       </a>
       {% else %}

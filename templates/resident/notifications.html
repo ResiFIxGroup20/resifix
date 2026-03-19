@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}Notifications — ResiFix{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block content %}
+
+<div class="card-panel">
+  <div class="panel-header">
+    <div class="panel-title">
+      <i class="bi bi-bell-fill"></i> Your Notifications
+    </div>
+    {% if notifications %}
+    <form method="POST" action="{{ url_for('resident.mark_all_read') }}">
+      <button type="submit" class="btn-ghost" style="font-size:12px;">
+        <i class="bi bi-check-all"></i> Mark all read
+      </button>
+    </form>
+    {% endif %}
+  </div>
+
+  {% if notifications %}
+  <div class="notif-list">
+    {% for n in notifications %}
+    <div class="notif-item {% if not n['is_read'] %}unread{% endif %} notif-type-{{ n['type'] }}">
+      <div class="notif-icon">
+        {% if n['type'] == 'sms' %}
+          <i class="bi bi-chat-fill"></i>
+        {% elif n['type'] == 'email' %}
+          <i class="bi bi-envelope-fill"></i>
+        {% else %}
+          <i class="bi bi-bell-fill"></i>
+        {% endif %}
+      </div>
+      <div class="notif-body">
+        <div class="notif-message">{{ n['message'] }}</div>
+        <div class="notif-time">{{ n['created_at'][:16] if n['created_at'] else '' }}</div>
+      </div>
+      {% if n['request_id'] %}
+      <a href="{{ url_for('resident.view_request', request_id=n['request_id']) }}" class="btn-icon">
+        <i class="bi bi-arrow-right"></i>
+      </a>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon"><i class="bi bi-bell-slash"></i></div>
+    <div class="empty-title">No notifications</div>
+    <div class="empty-sub">You'll be notified when your request status changes.</div>
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}
