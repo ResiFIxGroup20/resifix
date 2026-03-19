@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+{% block title %}My Profile — ResiFix{% endblock %}
+{% block page_title %}My Profile{% endblock %}
+
+{% block content %}
+
+<div style="margin-bottom:20px;">
+  <a href="{{ url_for('technician.technician_dashboard') }}" class="btn-ghost" style="padding:6px 14px; font-size:13px;">
+    <i class="bi bi-arrow-left"></i> Back to Dashboard
+  </a>
+</div>
+
+<div class="detail-layout">
+
+  <!-- Left: Edit form -->
+  <div>
+
+    <!-- Profile Header Card -->
+    <div style="
+      background: linear-gradient(135deg, var(--bg-2) 0%, #0f1e3d 100%);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      position: relative;
+      overflow: hidden;
+    ">
+      <div style="
+        position:absolute; right:-30px; top:-30px;
+        width:160px; height:160px; border-radius:50%;
+        background: radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%);
+        pointer-events:none;
+      "></div>
+
+      <!-- Big avatar -->
+      <div style="
+        width:72px; height:72px; border-radius:50%; flex-shrink:0;
+        background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+        display:flex; align-items:center; justify-content:center;
+        font-size:32px;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.3);
+        position:relative; z-index:1;
+      ">🔧</div>
+
+      <div style="position:relative; z-index:1;">
+        <div style="font-size:20px; font-weight:800; letter-spacing:-0.02em;">{{ user['full_name'] }}</div>
+        <div style="color:var(--text-muted); font-size:13px; margin-top:2px;">@{{ user['username'] }}</div>
+        <div style="margin-top:8px; display:flex; flex-wrap:wrap; gap:6px;">
+          <span style="
+            background:var(--accent-dim); border:1px solid rgba(37,99,235,0.25);
+            border-radius:20px; padding:3px 10px; font-size:11px; color:var(--primary); font-weight:600;">
+            <i class="bi bi-wrench"></i> {{ user['specialization']|title if user['specialization'] else 'General' }}
+          </span>
+          {% if user['residence'] %}
+          <span style="
+            background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.25);
+            border-radius:20px; padding:3px 10px; font-size:11px; color:var(--success); font-weight:600;">
+            <i class="bi bi-building"></i> {{ user['residence'] }}
+          </span>
+          {% endif %}
+          <span style="
+            background:rgba(107,114,128,0.1); border:1px solid rgba(107,114,128,0.2);
+            border-radius:20px; padding:3px 10px; font-size:11px; color:#9ca3af; font-weight:600;">
+            <i class="bi bi-circle-fill" style="font-size:7px; color:var(--success);"></i>
+            Active
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit Form -->
+    <div class="detail-main">
+      <div style="font-weight:700; font-size:14px; margin-bottom:20px; display:flex; align-items:center; gap:8px;">
+        <i class="bi bi-pencil-fill" style="color:var(--accent);"></i> Edit Details
+      </div>
+
+      <form method="POST">
+        <div class="form-group-custom">
+          <label class="form-label-custom">Full Name</label>
+          <input type="text" name="full_name" class="form-control-custom"
+                 style="padding-left:12px;"
+                 value="{{ user['full_name'] }}" required>
+        </div>
+
+        <div class="form-group-custom">
+          <label class="form-label-custom">Email Address</label>
+          <input type="email" name="email" class="form-control-custom"
+                 style="padding-left:12px;"
+                 value="{{ user['email'] }}" required>
+        </div>
+
+        <!-- Read-only fields -->
+        <div class="form-group-custom">
+          <label class="form-label-custom">Username</label>
+          <input type="text" class="form-control-custom" style="padding-left:12px; opacity:0.5; cursor:not-allowed;"
+                 value="{{ user['username'] }}" disabled>
+          <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Username cannot be changed.</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div class="form-group-custom">
+            <label class="form-label-custom">Specialization</label>
+            <input type="text" class="form-control-custom" style="padding-left:12px; opacity:0.5; cursor:not-allowed;"
+                   value="{{ user['specialization']|title if user['specialization'] else '—' }}" disabled>
+            <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Managed by admin.</div>
+          </div>
+          <div class="form-group-custom">
+            <label class="form-label-custom">Residence</label>
+            <input type="text" class="form-control-custom" style="padding-left:12px; opacity:0.5; cursor:not-allowed;"
+                   value="{{ user['residence'] or '—' }}" disabled>
+            <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Managed by admin.</div>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a href="{{ url_for('technician.technician_dashboard') }}" class="btn-ghost">Cancel</a>
+          <button type="submit" class="btn-primary">
+            <i class="bi bi-check-lg"></i> Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Right: Stats sidebar -->
+  <div class="detail-sidebar">
+
+    <!-- Performance card -->
+    <div class="action-card">
+      <div class="action-card-title">
+        <i class="bi bi-bar-chart-fill" style="color:var(--accent);"></i> Performance
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <span style="font-size:12px; color:var(--text-muted);">Avg Rating</span>
+          <span style="font-size:13px; font-weight:700; color:var(--warning);">⭐ {{ avg_rating }}/5</span>
+        </div>
+        <div style="height:6px; background:var(--bg-3); border-radius:3px; overflow:hidden;">
+          <div style="height:100%; width:{{ (avg_rating / 5 * 100)|round }}%; background:var(--warning); border-radius:3px; transition:width 0.4s;"></div>
+        </div>
+        <div style="font-size:11px; color:var(--text-faint); margin-top:3px;">{{ total_ratings }} rating{{ 's' if total_ratings != 1 }}</div>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px;
+          background:var(--bg-3); border-radius:var(--radius-sm);">
+          <span style="font-size:12px; color:var(--text-muted);"><i class="bi bi-clipboard-check me-2"></i>Total Tasks</span>
+          <span style="font-weight:700; font-size:14px;">{{ stats.total }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px;
+          background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.15); border-radius:var(--radius-sm);">
+          <span style="font-size:12px; color:var(--info);"><i class="bi bi-tools me-2"></i>In Progress</span>
+          <span style="font-weight:700; font-size:14px; color:var(--info);">{{ stats.in_progress }}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px;
+          background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.15); border-radius:var(--radius-sm);">
+          <span style="font-size:12px; color:var(--success);"><i class="bi bi-check-circle-fill me-2"></i>Resolved</span>
+          <span style="font-weight:700; font-size:14px; color:var(--success);">{{ stats.resolved }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Account info -->
+    <div class="info-card">
+      <div class="info-row">
+        <span>Member Since</span>
+        <span>{{ user['created_at'][:10] if user['created_at'] else '—' }}</span>
+      </div>
+      <div class="info-row">
+        <span>Role</span>
+        <span class="role-badge role-technician">Technician</span>
+      </div>
+      <div class="info-row">
+        <span>Status</span>
+        <span style="color:var(--success); font-weight:600; font-size:12px;">
+          <i class="bi bi-circle-fill" style="font-size:7px;"></i> Active
+        </span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}

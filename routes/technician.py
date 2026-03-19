@@ -5,6 +5,8 @@ from database.db import (
     get_requests_by_technician,
     get_request_by_id,
     get_all_users,
+    get_user_by_id,
+    update_technician_profile,
     update_request_status,
     add_comment,
     get_comments_by_request,
@@ -147,4 +149,52 @@ def task_detail(request_id):
         user_map=user_map,
         comments=comments,
         images=images,
+    )
+
+# Profile
+
+@technician.route('/technician/profile', methods=['GET', 'POST'])
+@technician_required
+def profile():
+    """Technician profile view and edit."""
+    tech_id = session['user_id']
+    user = get_user_by_id(tech_id)
+
+    if not user:
+        flash('User not found.', 'danger')
+        return redirect(url_for('technician.technician_dashboard'))
+
+    # Stats for the profile page
+    all_tasks     = get_requests_by_technician(tech_id)
+    avg_rating    = get_average_rating(tech_id)
+    ratings       = get_ratings_by_technician(tech_id)
+    total_ratings = len(ratings)
+    stats = {
+        'total':       len(all_tasks),
+        'in_progress': sum(1 for t in all_tasks if t['status'] == 'in_progress'),
+        'resolved':    sum(1 for t in all_tasks if t['status'] == 'resolved'),
+    }
+
+    if request.method == 'POST':
+        full_name = request.form.get('full_name', '').strip()
+        email     = request.form.get('email', '').strip()
+
+        if not full_name:
+            flash('Full name cannot be empty.', 'danger')
+            return redirect(url_for('technician.profile'))
+        if not email or '@' not in email:
+            flash('Please enter a valid email address.', 'danger')
+            return redirect(url_for('technician.profile'))
+
+        update_technician_profile(tech_id, full_name, email)
+        session['full_name'] = full_name   # keep session in sync
+        flash('Profile updated successfully.', 'success')
+        return redirect(url_for('technician.profile'))
+
+    return render_template(
+        'technician/profile.html',
+        user=user,
+        stats=stats,
+        avg_rating=avg_rating,
+        total_ratings=total_ratings,
     )

@@ -49,19 +49,19 @@
     {% elif session.get('role') == 'technician' %}
     <!-- Technician Navigation -->
     <a href="{{ url_for('technician.technician_dashboard') }}"
-       class="nav-link {% if request.endpoint == 'technician.technician_dashboard' %}active{% endif %}">
+       class="nav-link {% if request.endpoint == 'technician.technician_dashboard' and not request.args.get('status') %}active{% endif %}">
       <i class="bi bi-grid-1x2-fill"></i> My Tasks
     </a>
     <a href="{{ url_for('technician.technician_dashboard') }}?status=assigned"
-       class="nav-link">
+       class="nav-link {% if request.args.get('status') == 'assigned' %}active{% endif %}">
       <i class="bi bi-clock-history"></i> Assigned
     </a>
     <a href="{{ url_for('technician.technician_dashboard') }}?status=in_progress"
-       class="nav-link">
+       class="nav-link {% if request.args.get('status') == 'in_progress' %}active{% endif %}">
       <i class="bi bi-tools"></i> In Progress
     </a>
     <a href="{{ url_for('technician.technician_dashboard') }}?status=resolved"
-       class="nav-link">
+       class="nav-link {% if request.args.get('status') == 'resolved' %}active{% endif %}">
       <i class="bi bi-check-circle-fill"></i> Resolved
     </a>
 
@@ -86,9 +86,23 @@
   <!-- Sidebar footer -->
   <div class="sidebar-footer">
     <div class="user-info">
+      {% if session.get('role') == 'technician' %}
+      <a href="{{ url_for('technician.profile') }}" title="View Profile" style="text-decoration:none; flex-shrink:0;">
+        <div class="user-avatar" style="
+          background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
+          color: #fff; font-size:16px; cursor:pointer;
+          transition: transform 0.15s, box-shadow 0.15s;
+          box-shadow: 0 0 0 2px transparent;"
+          onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 0 0 2px var(--accent)';"
+          onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 0 0 2px transparent';">
+          🔧
+        </div>
+      </a>
+      {% else %}
       <div class="user-avatar">
         {{ session.get('full_name', 'U')[0].upper() }}
       </div>
+      {% endif %}
       <div class="user-details">
         <div class="user-name">{{ session.get('full_name', 'User') }}</div>
         <div class="user-role">{{ session.get('role', '').title() }}</div>

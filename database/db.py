@@ -194,6 +194,17 @@ def update_user(user_id, full_name, email, room_number):
     conn.close()
 
 
+def update_technician_profile(user_id, full_name, email):
+    """Update technician profile (name + email — residence/specialization managed by admin)."""
+    conn = get_connection()
+    conn.execute("""
+        UPDATE users SET full_name = ?, email = ?
+        WHERE id = ?
+    """, (full_name, email, user_id))
+    conn.commit()
+    conn.close()
+
+
 def set_user_active(user_id, is_active):
     """Activate or deactivate a user account (admin use)."""
     conn = get_connection()
