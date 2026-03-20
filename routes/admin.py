@@ -16,9 +16,12 @@ from database.db import (
     get_comments_by_request,
     get_available_technicians_for_request,
     get_all_residences,
+    get_all_residences_all,
+    get_residence_by_id,
     add_residence,
     set_residence_active,
-    update_profile
+    update_profile,
+    
 )
 from functools import wraps
 import math
@@ -268,11 +271,34 @@ def manage_residences():
             flash('Residence name cannot be empty.', 'warning')
         else:
             success = add_residence(name)
-            flash(f'"{name}" {"added" if success else "already exists"}.', 'success' if success else 'warning')
+            if success:
+                flash(f'"{name}" has been added successfully.', 'success')
+            else:
+                flash(f'"{name}" already exists.', 'warning')
         return redirect(url_for('admin.manage_residences'))
 
-    residences = get_all_residences()
-    return render_template('admin/manage_residences.html', residences=residences)
+    all_residences = get_all_residences_all()
+    status_filter  = request.args.get('status', '').strip()
+
+    active_count   = sum(1 for r in all_residences if r['is_active'])
+    inactive_count = sum(1 for r in all_residences if not r['is_active'])
+    all_count      = len(all_residences)
+
+    if status_filter == 'active':
+        residences = [r for r in all_residences if r['is_active']]
+    elif status_filter == 'inactive':
+        residences = [r for r in all_residences if not r['is_active']]
+    else:
+        residences = all_residences
+
+    return render_template(
+        'admin/manage_residences.html',
+        residences=residences,
+        status_filter=status_filter,
+        active_count=active_count,
+        inactive_count=inactive_count,
+        all_count=all_count,
+    )
 
 
 # ── Toggle Residence Active ────────────────────────────────────────────────

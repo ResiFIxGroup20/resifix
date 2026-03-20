@@ -8,13 +8,18 @@
 
 <!--  Stat Cards -->
 <div class="row g-3 mb-4">
+
+  <!-- Total Requests — now clickable and clears all filters -->
   <div class="col-6 col-md-4 col-lg-2">
-    <div class="stat-card">
-      <div class="stat-icon text-primary"><i class="bi bi-clipboard2-fill"></i></div>
-      <div class="stat-value">{{ stats.total }}</div>
-      <div class="stat-label">Total Requests</div>
-    </div>
+    <a href="{{ url_for('admin.admin_dashboard') }}" class="text-decoration-none">
+      <div class="stat-card">
+        <div class="stat-icon text-primary"><i class="bi bi-clipboard2-fill"></i></div>
+        <div class="stat-value">{{ stats.total }}</div>
+        <div class="stat-label">Total Requests</div>
+      </div>
+    </a>
   </div>
+
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{{ url_for('admin.admin_dashboard') }}?status=pending" class="text-decoration-none">
       <div class="stat-card stat-card--warning">
@@ -24,6 +29,7 @@
       </div>
     </a>
   </div>
+
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{{ url_for('admin.admin_dashboard') }}?status=in_progress" class="text-decoration-none">
       <div class="stat-card stat-card--info">
@@ -33,6 +39,7 @@
       </div>
     </a>
   </div>
+
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{{ url_for('admin.admin_dashboard') }}?status=resolved" class="text-decoration-none">
       <div class="stat-card stat-card--success">
@@ -42,6 +49,7 @@
       </div>
     </a>
   </div>
+
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{{ url_for('admin.admin_dashboard') }}?priority=critical" class="text-decoration-none">
       <div class="stat-card stat-card--danger">
@@ -51,6 +59,7 @@
       </div>
     </a>
   </div>
+
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{{ url_for('admin.manage_users') }}" class="text-decoration-none">
       <div class="stat-card">
@@ -60,6 +69,7 @@
       </div>
     </a>
   </div>
+
 </div>
 
 <!--  Search + Filter Bar -->
@@ -68,7 +78,6 @@
 
     <!-- Room number search -->
     <form method="GET" action="{{ url_for('admin.admin_dashboard') }}" class="d-flex gap-2 mb-2">
-      <!-- Preserve active filters when searching -->
       {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
       {% if priority_filter %}<input type="hidden" name="priority" value="{{ priority_filter }}">{% endif %}
       <input type="hidden" name="page" value="1">
@@ -135,6 +144,7 @@
         <tr>
           <th>Ticket</th>
           <th>Title</th>
+          <th>Residence</th>
           <th>Room</th>
           <th>Category</th>
           <th>Priority</th>
@@ -153,6 +163,9 @@
             {% if r.is_worsening %}
               <span class="badge bg-danger ms-1" title="Worsening"><i class="bi bi-arrow-up-right"></i></span>
             {% endif %}
+          </td>
+          <td>
+            <span class="small">{{ r.residence or '—' }}</span>
           </td>
           <td>{{ r.room_number or '—' }}</td>
           <td>{{ r.category or '—' }}</td>
@@ -187,7 +200,7 @@
     </table>
   </div>
 
-  <!--  Pagination ─-->
+  <!--  Pagination -->
   {% if total_pages > 1 %}
   <div class="card-footer d-flex justify-content-between align-items-center">
     <span class="text-muted small">
@@ -218,7 +231,6 @@
           {% endif %}
         {% endfor %}
 
-        
         <!-- Next -->
         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
           <a class="page-link"

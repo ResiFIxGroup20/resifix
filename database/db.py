@@ -42,6 +42,25 @@ def get_all_residences():
     conn.close()
     return residences
 
+def get_all_residences_all():
+    """Get ALL residences including inactive ones (for admin management page)."""
+    conn = get_connection()
+    residences = conn.execute(
+        "SELECT * FROM residences ORDER BY is_active DESC, name ASC"
+    ).fetchall()
+    conn.close()
+    return residences
+
+
+def get_residence_by_id(residence_id):
+    """Get a single residence by ID."""
+    conn = get_connection()
+    res = conn.execute(
+        "SELECT * FROM residences WHERE id = ?", (residence_id,)
+    ).fetchone()
+    conn.close()
+    return res
+
 def add_residence(name):
     conn = get_connection()
     try:
