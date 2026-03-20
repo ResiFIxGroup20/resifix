@@ -54,61 +54,85 @@
       </span>
     </div>
 
+    <!-- Search Bar -->
+    <!-- Search Bar -->
+    <div class="filter-form">
+      <div class="input-icon-wrap" style="max-width: 360px;">
+        <i class="bi bi-search input-icon"></i>
+        <input
+          type="text"
+          id="residenceSearch"
+          class="form-control-custom"
+          placeholder="Search residence by name…"
+          oninput="filterResidences(this.value)"
+          autocomplete="off"
+          style="background:#ffffff; color:#000000;"
+        />
+      </div>
+    </div>
+
     {% if residences %}
-    <table class="data-table">
-      <thead>
-        <tr>
-          <th>Building Name</th>
-          <th>Status</th>
-          <th>Added</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for res in residences %}
-        <tr>
-          <td>
-            <div class="user-cell">
+    <div class="table-responsive">
+      <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Building Name</th>
+            <th>Status</th>
+            <th>Added</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for res in residences %}
+          <tr>
+            <td class="text-muted small">{{ loop.index }}</td>
+            <td>
+              <div class="user-cell">
+                {% if res['is_active'] %}
+                  <div class="user-avatar-sm" style="border-radius:8px; background:var(--accent-dim); color:var(--accent);">
+                    <i class="bi bi-building"></i>
+                  </div>
+                  <strong>{{ res['name'] }}</strong>
+                {% else %}
+                  <div class="user-avatar-sm" style="border-radius:8px; background:var(--bg-3); color:var(--text-faint);">
+                    <i class="bi bi-building"></i>
+                  </div>
+                 <strong>{{ res['name'] }}</strong>
+                {% endif %}
+              </div>
+            </td>
+            <td>
               {% if res['is_active'] %}
-                <div class="user-avatar-sm" style="border-radius:8px; background:var(--accent-dim); color:var(--accent);">
-                  <i class="bi bi-building"></i>
-                </div>
-                <span style="font-weight:600;">{{ res['name'] }}</span>
+                <span class="badge bg-success">Active</span>
               {% else %}
-                <div class="user-avatar-sm" style="border-radius:8px; background:var(--bg-3); color:var(--text-faint);">
-                  <i class="bi bi-building"></i>
-                </div>
-                <span class="text-muted" style="font-weight:600;">{{ res['name'] }}</span>
+                <span class="badge bg-danger">Inactive</span>
               {% endif %}
-            </div>
-          </td>
-          <td>
-            {% if res['is_active'] %}
-              <span class="status-badge badge-resolved">Active</span>
-            {% else %}
-              <span class="status-badge badge-cancelled">Inactive</span>
-            {% endif %}
-          </td>
-          <td class="text-muted small">
-            {{ res['created_at'][:10] if res['created_at'] else '—' }}
-          </td>
-          <td>
-            <form method="POST" action="{{ url_for('admin.toggle_residence', residence_id=res['id']) }}" style="display:inline;">
-              {% if res['is_active'] %}
-                <button type="submit" class="btn-icon" title="Deactivate">
-                  <i class="bi bi-pause-circle"></i>
-                </button>
-              {% else %}
-                <button type="submit" class="btn-icon text-success" title="Activate">
-                  <i class="bi bi-play-circle"></i>
-                </button>
-              {% endif %}
-            </form>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+            </td>
+            <td class="small text-muted">
+              {{ res['created_at'][:10] if res['created_at'] else '—' }}
+            </td>
+            <td>
+              <form method="POST" action="{{ url_for('admin.toggle_residence', residence_id=res['id']) }}" style="display:inline;">
+                {% if res['is_active'] %}
+                  <button type="submit" class="btn btn-sm btn-outline-danger" title="Deactivate">
+                    <i class="bi bi-pause-circle"></i> Deactivate
+                  </button>
+                {% else %}
+                  <button type="submit" class="btn btn-sm btn-outline-success" title="Activate">
+                    <i class="bi bi-play-circle"></i> Activate
+                  </button>
+                {% endif %}
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <p id="noSearchResults" class="text-center text-muted py-3" style="display:none;">
+            No residence found matching your search.
+      </p>
+    </div>
 
     {% else %}
     <div class="empty-state">
@@ -155,5 +179,25 @@
   </div>
 
 </div>
+{% endblock %}
 
+{% block scripts %}
+<script>
+  function filterResidences(query) {
+    const q = query.toLowerCase().trim();
+    const rows = document.querySelectorAll('tbody tr');
+    let visible = 0;
+
+    rows.forEach(row => {
+     const nameCell = row.cells[1];
+      const name = nameCell ? nameCell.innerText.toLowerCase() : '';
+      const match = !q || name.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+
+    const empty = document.getElementById('noSearchResults');
+    if (empty) empty.style.display = (visible === 0 && q) ? 'block' : 'none';
+  }
+</script>
 {% endblock %}
