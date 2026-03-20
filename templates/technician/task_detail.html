@@ -4,7 +4,6 @@
 
 {% block content %}
 
-<!-- Back button -->
 <div style="margin-bottom:16px;">
   <a href="{{ url_for('technician.technician_dashboard') }}" class="btn-ghost">
     <i class="bi bi-arrow-left"></i> Back to Tasks
@@ -13,10 +12,8 @@
 
 <div class="detail-layout">
 
-  <!-- ── Left: Task Info ────────────────────────────────────────────────── -->
+  <!-- ── Left ──────────────────────────────────────────────────────────── -->
   <div>
-
-    <!-- Main card -->
     <div class="detail-main" style="margin-bottom:20px;">
 
       <div class="detail-header">
@@ -43,17 +40,15 @@
         <span><i class="bi bi-tag"></i> {{ task.category|title }}</span>
         <span><i class="bi bi-calendar3"></i> {{ task.submitted_at[:10] if task.submitted_at else '—' }}</span>
         {% if task.is_worsening %}
-        <span style="color:var(--danger);"><i class="bi bi-arrow-up-right-circle-fill"></i> Marked as worsening</span>
+        <span style="color:var(--danger);"><i class="bi bi-arrow-up-right-circle-fill"></i> Worsening</span>
         {% endif %}
       </div>
 
-      <!-- Description -->
       <div class="detail-description">
         <div class="section-label-sm">Description</div>
         <p style="line-height:1.7; color:var(--text-muted);">{{ task.description or 'No description provided.' }}</p>
       </div>
 
-      <!-- Resident info -->
       {% if task.resident_id in user_map %}
       {% set res = user_map[task.resident_id] %}
       <div style="background:var(--bg-3); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 16px; margin-bottom:20px;">
@@ -68,7 +63,6 @@
       </div>
       {% endif %}
 
-      <!-- Images -->
       {% if images %}
       <div style="margin-bottom:20px;">
         <div class="section-label-sm">Uploaded Photos</div>
@@ -83,23 +77,32 @@
       </div>
       {% endif %}
 
-      <!-- Comments / Work notes -->
+      <!-- Staff Notes & Messages -->
       <div class="comments-section">
-        <div class="section-label-sm" style="margin-bottom:16px;">Work Notes & Comments</div>
+        <div class="section-label-sm" style="margin-bottom:16px;">
+          Staff Notes & Messages
+          <span style="font-size:10px; color:var(--text-faint); font-weight:400; margin-left:8px;">(not visible to student)</span>
+        </div>
 
         {% if comments %}
         <div class="comments-list">
           {% for c in comments %}
           {% set author = user_map.get(c['author_id']) %}
-          <div class="comment-item {% if c['is_internal'] %}comment-internal{% endif %}">
-            <div class="comment-avatar">
+          <div class="comment-item">
+            <div class="comment-avatar" style="
+              background:{% if author and author['role'] == 'admin' %}var(--accent-dim){% else %}var(--bg-3){% endif %};
+              color:{% if author and author['role'] == 'admin' %}var(--accent){% else %}var(--text-muted){% endif %};">
               {{ author['full_name'][0].upper() if author else '?' }}
             </div>
             <div class="comment-body">
               <div class="comment-meta">
                 <span class="comment-author">{{ author['full_name'] if author else 'Unknown' }}</span>
                 <span class="comment-role">{{ author['role']|title if author else '' }}</span>
-                {% if c['is_internal'] %}<span class="internal-badge">Internal</span>{% endif %}
+                {% if author and author['role'] == 'admin' %}
+                <span class="internal-badge" style="background:var(--accent-dim); color:var(--primary);">Admin</span>
+                {% else %}
+                <span class="internal-badge">Note</span>
+                {% endif %}
                 <span class="comment-date">{{ c['created_at'][:16] if c['created_at'] else '' }}</span>
               </div>
               <div class="comment-text">{{ c['body'] }}</div>
@@ -108,43 +111,115 @@
           {% endfor %}
         </div>
         {% else %}
-        <p style="color:var(--text-faint); font-size:13px;">No notes yet.</p>
+        <p style="color:var(--text-faint); font-size:13px; padding:12px 0;">No notes yet.</p>
         {% endif %}
 
-        <!-- Add work note form -->
-        <form method="POST" class="comment-form" style="margin-top:20px;">
-          <input type="hidden" name="action" value="add_note">
-          <div class="form-group-custom">
-            <label class="form-label-custom">Add Work Note</label>
-            <textarea name="note_body" class="form-textarea-custom" rows="3"
-                      placeholder="Describe what you did or found..."></textarea>
+        <!-- Tab switcher -->
+        <div style="margin-top:20px;">
+          <div style="display:flex; gap:8px; margin-bottom:14px;">
+            <button type="button" id="tabMsg" onclick="switchTab('msg')"
+                    style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--accent);
+                      background:var(--accent-dim); color:var(--primary); font-size:12px;
+                      font-weight:600; cursor:pointer; font-family:var(--font);">
+              📩 Message Admin
+            </button>
+            <button type="button" id="tabNote" onclick="switchTab('note')"
+                    style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--border-strong);
+                      background:var(--bg-3); color:var(--text-muted); font-size:12px;
+                      font-weight:600; cursor:pointer; font-family:var(--font);">
+              📋 Work Note
+            </button>
           </div>
-          <button type="submit" class="btn-ghost">
-            <i class="bi bi-sticky-fill"></i> Save Note
-          </button>
-        </form>
+
+          <!-- Message admin -->
+          <div id="formMsg">
+            <form method="POST">
+              <input type="hidden" name="action" value="add_reply">
+              <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+                <button type="button" id="clearMsg" style="display:none; align-items:center; gap:5px;
+                  background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+                  border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                  color:var(--danger); cursor:pointer; font-family:var(--font);">
+                  <i class="bi bi-x-circle-fill"></i> Clear
+                </button>
+                <button type="button" id="micMsg" style="display:flex; align-items:center; gap:5px;
+                  background:var(--bg-3); border:1px solid var(--border-strong);
+                  border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                  color:var(--text-muted); cursor:pointer; font-family:var(--font);">
+                  <i class="bi bi-mic-fill" id="micMsgIcon"></i>
+                  <span id="micMsgLabel">Speak</span>
+                </button>
+              </div>
+              <div id="speechStatusMsg" style="display:none; align-items:center; gap:8px;
+                background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);
+                border-radius:6px; padding:7px 12px; font-size:12px; color:var(--primary); margin-bottom:6px;">
+                <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
+                  display:inline-block; animation:pulse 1s infinite;"></span>
+                <span>Listening… click Stop when done.</span>
+              </div>
+              <textarea name="reply_body" id="msgField" class="form-textarea-custom" rows="3"
+                        placeholder="Send a message to admin…"></textarea>
+              <div style="margin-top:8px;">
+                <button type="submit" class="btn-primary"><i class="bi bi-send-fill"></i> Send to Admin</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Work note -->
+          <div id="formNote" style="display:none;">
+            <form method="POST">
+              <input type="hidden" name="action" value="add_note">
+              <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+                <button type="button" id="clearTechNote" style="display:none; align-items:center; gap:5px;
+                  background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+                  border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                  color:var(--danger); cursor:pointer; font-family:var(--font);">
+                  <i class="bi bi-x-circle-fill"></i> Clear
+                </button>
+                <button type="button" id="micTechNote" style="display:flex; align-items:center; gap:5px;
+                  background:var(--bg-3); border:1px solid var(--border-strong);
+                  border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                  color:var(--text-muted); cursor:pointer; font-family:var(--font);">
+                  <i class="bi bi-mic-fill" id="micTechNoteIcon"></i>
+                  <span id="micTechNoteLabel">Speak</span>
+                </button>
+              </div>
+              <div id="speechStatusTechNote" style="display:none; align-items:center; gap:8px;
+                background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.2);
+                border-radius:6px; padding:7px 12px; font-size:12px; color:var(--primary); margin-bottom:6px;">
+                <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
+                  display:inline-block; animation:pulse 1s infinite;"></span>
+                <span>Listening… click Stop when done.</span>
+              </div>
+              <textarea name="note_body" id="techNoteField" class="form-textarea-custom" rows="3"
+                        placeholder="Describe what you did or found…"></textarea>
+              <div style="margin-top:8px;">
+                <button type="submit" class="btn-ghost"><i class="bi bi-sticky-fill"></i> Save Note</button>
+              </div>
+            </form>
+          </div>
+
+        </div>
       </div>
 
     </div>
   </div>
 
-  <!-- ── Right: Actions ─────────────────────────────────────────────────── -->
+  <!-- ── Right ─────────────────────────────────────────────────────────── -->
   <div class="detail-sidebar">
 
-    <!-- Update Status -->
     <div class="action-card">
       <div class="action-card-title">
         <i class="bi bi-arrow-repeat" style="color:var(--accent);"></i> Update Status
       </div>
-
       <form method="POST">
         <input type="hidden" name="action" value="update_status">
         <div class="form-group-custom">
           <label class="form-label-custom">New Status</label>
           <select name="status" class="form-select-custom">
-            <option value="assigned"    {% if task.status == 'assigned'    %}selected{% endif %}>Assigned — not started yet</option>
-            <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Progress — currently working</option>
-            <option value="resolved"    {% if task.status == 'resolved'    %}selected{% endif %}>Resolved — work complete</option>
+            <option value="assigned"    {% if task.status == 'assigned'    %}selected{% endif %}>Assigned — not started</option>
+            <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Progress — working</option>
+            <option value="resolved"    {% if task.status == 'resolved'    %}selected{% endif %}>Resolved — complete</option>
           </select>
         </div>
         <button type="submit" class="btn-primary w-100">
@@ -153,41 +228,101 @@
       </form>
     </div>
 
-    <!-- Task Info -->
     <div class="info-card">
-      <div class="info-row">
-        <span>Ticket</span>
-        <span class="font-mono">{{ task.ticket_no }}</span>
-      </div>
-      <div class="info-row">
-        <span>Category</span>
-        <span>{{ task.category|title }}</span>
-      </div>
+      <div class="info-row"><span>Ticket</span><span class="font-mono">{{ task.ticket_no }}</span></div>
+      <div class="info-row"><span>Category</span><span>{{ task.category|title }}</span></div>
       <div class="info-row">
         <span>Priority</span>
         <span class="priority-badge priority-{{ task.priority }}" style="font-size:10px;">{{ task.priority|title }}</span>
       </div>
-      <div class="info-row">
-        <span>Residence</span>
-        <span>{{ task.residence or '—' }}</span>
-      </div>
-      <div class="info-row">
-        <span>Room</span>
-        <span>{{ task.room_number or '—' }}</span>
-      </div>
-      <div class="info-row">
-        <span>Submitted</span>
-        <span>{{ task.submitted_at[:10] if task.submitted_at else '—' }}</span>
-      </div>
+      <div class="info-row"><span>Residence</span><span>{{ task.residence or '—' }}</span></div>
+      <div class="info-row"><span>Room</span><span>{{ task.room_number or '—' }}</span></div>
+      <div class="info-row"><span>Submitted</span><span>{{ task.submitted_at[:10] if task.submitted_at else '—' }}</span></div>
       {% if task.resolved_at %}
-      <div class="info-row">
-        <span>Resolved</span>
-        <span>{{ task.resolved_at[:10] }}</span>
-      </div>
+      <div class="info-row"><span>Resolved</span><span>{{ task.resolved_at[:10] }}</span></div>
       {% endif %}
     </div>
 
   </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(tab) {
+    const msgForm  = document.getElementById('formMsg');
+    const noteForm = document.getElementById('formNote');
+    const msgTab   = document.getElementById('tabMsg');
+    const noteTab  = document.getElementById('tabNote');
+    if (tab === 'msg') {
+        msgForm.style.display = 'block'; noteForm.style.display = 'none';
+        msgTab.style.background = 'var(--accent-dim)'; msgTab.style.borderColor = 'var(--accent)'; msgTab.style.color = 'var(--primary)';
+        noteTab.style.background = 'var(--bg-3)'; noteTab.style.borderColor = 'var(--border-strong)'; noteTab.style.color = 'var(--text-muted)';
+    } else {
+        noteForm.style.display = 'block'; msgForm.style.display = 'none';
+        noteTab.style.background = 'rgba(96,165,250,0.1)'; noteTab.style.borderColor = 'rgba(96,165,250,0.3)'; noteTab.style.color = 'var(--primary)';
+        msgTab.style.background = 'var(--bg-3)'; msgTab.style.borderColor = 'var(--border-strong)'; msgTab.style.color = 'var(--text-muted)';
+    }
+}
+
+function setupVoiceInput(textareaId, micBtnId, micIconId, micLabelId, clearBtnId, statusId) {
+    const field     = document.getElementById(textareaId);
+    const micBtn    = document.getElementById(micBtnId);
+    const micIcon   = document.getElementById(micIconId);
+    const micLabel  = document.getElementById(micLabelId);
+    const clearBtn  = document.getElementById(clearBtnId);
+    const statusDiv = document.getElementById(statusId);
+    if (!field || !micBtn) return;
+
+    function updateClear() { clearBtn.style.display = field.value.trim() ? 'flex' : 'none'; }
+    field.addEventListener('input', updateClear);
+    clearBtn.addEventListener('click', () => { field.value = ''; updateClear(); field.focus(); });
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { micBtn.style.display = 'none'; return; }
+
+    const rec = new SR();
+    rec.lang = 'en-ZA'; rec.continuous = true; rec.interimResults = true;
+    let listening = false, saved = '';
+
+    rec.onstart = () => {
+        listening = true; saved = field.value;
+        micBtn.style.background = 'rgba(239,68,68,0.12)'; micBtn.style.borderColor = 'rgba(239,68,68,0.4)'; micBtn.style.color = 'var(--danger)';
+        micIcon.className = 'bi bi-stop-circle-fill'; micLabel.textContent = 'Stop'; statusDiv.style.display = 'flex';
+    };
+    rec.onresult = (e) => {
+        let interim = '', final = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+            const t = e.results[i][0].transcript;
+            if (e.results[i].isFinal) final += t + ' '; else interim += t;
+        }
+        field.value = saved + final + interim;
+        if (final) saved = saved + final;
+        updateClear();
+    };
+    rec.onerror = (e) => {
+        if (e.error === 'not-allowed') alert('Microphone access denied. Please allow microphone access and try again.');
+        stop();
+    };
+    rec.onend = () => { if (listening) rec.start(); };
+
+    function stop() {
+        listening = false; rec.stop();
+        micBtn.style.background = ''; micBtn.style.borderColor = ''; micBtn.style.color = '';
+        micIcon.className = 'bi bi-mic-fill'; micLabel.textContent = 'Speak'; statusDiv.style.display = 'none';
+    }
+    micBtn.addEventListener('click', () => { if (!listening) rec.start(); else stop(); });
+}
+
+setupVoiceInput('msgField','micMsg','micMsgIcon','micMsgLabel','clearMsg','speechStatusMsg');
+setupVoiceInput('techNoteField','micTechNote','micTechNoteIcon','micTechNoteLabel','clearTechNote','speechStatusTechNote');
+</script>
+
+<style>
+@keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:0.4; transform:scale(0.8); }
+}
+</style>
 {% endblock %}

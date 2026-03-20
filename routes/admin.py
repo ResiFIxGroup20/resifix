@@ -21,7 +21,6 @@ from database.db import (
     add_residence,
     set_residence_active,
     update_profile,
-    
 )
 from functools import wraps
 import math
@@ -109,9 +108,12 @@ def request_detail(request_id):
         flash('Request not found.', 'danger')
         return redirect(url_for('admin.admin_dashboard'))
 
+    # Pass exclude_request_id so the currently assigned technician
+    # still appears in the reassign dropdown
     technicians = get_available_technicians_for_request(
-        residence = req['residence'] or '',
-        category  = req['category']  or ''
+        residence          = req['residence'] or '',
+        category           = req['category']  or '',
+        exclude_request_id = request_id
     )
     comments = get_comments_by_request(request_id, include_internal=True)
 
@@ -143,6 +145,16 @@ def request_detail(request_id):
             else:
                 add_comment(request_id, session['user_id'], body, is_internal=True)
                 flash('Internal note added.', 'success')
+            return redirect(url_for('admin.request_detail', request_id=request_id))
+
+        if action == 'add_reply':
+            body = request.form.get('reply_body', '').strip()
+            if not body:
+                flash('Reply cannot be empty.', 'warning')
+            else:
+                # is_internal=False so the student can see this
+                add_comment(request_id, session['user_id'], body, is_internal=False)
+                flash('Reply sent to student.', 'success')
             return redirect(url_for('admin.request_detail', request_id=request_id))
 
     return render_template('admin/request_detail.html',
@@ -191,7 +203,6 @@ def manage_users():
 @admin.route('/admin/users/<int:user_id>', methods=['GET', 'POST'])
 @admin_required
 def user_detail(user_id):
-    """View and edit a single user's account details."""
     user       = get_user_by_id(user_id)
     residences = get_all_residences()
 
@@ -291,12 +302,9 @@ def manage_residences():
     else:
         residences = all_residences
 
-    return render_template(
-        'admin/manage_residences.html',
-        residences=residences,
-        status_filter=status_filter,
-        active_count=active_count,
-        inactive_count=inactive_count,
+    return render_template('admin/manage_residences.html',
+        residences=residences, status_filter=status_filter,
+        active_count=active_count, inactive_count=inactive_count,
         all_count=all_count,
     )
 

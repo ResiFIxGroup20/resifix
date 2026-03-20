@@ -97,7 +97,7 @@ def task_detail(request_id):
 
     all_users = get_all_users()
     user_map  = {u['id']: u for u in all_users}
-    comments  = get_comments_by_request(request_id, include_internal=True)
+    comments  = get_comments_by_request(request_id, staff_only=True)
     images    = get_images_by_request(request_id)
 
     if request.method == 'POST':
@@ -119,6 +119,15 @@ def task_detail(request_id):
             else:
                 add_comment(request_id, tech_id, body, is_internal=True)
                 flash('Work note added.', 'success')
+            return redirect(url_for('technician.task_detail', request_id=request_id))
+
+        if action == 'add_reply':
+            body = request.form.get('reply_body', '').strip()
+            if not body:
+                flash('Message cannot be empty.', 'warning')
+            else:
+                add_comment(request_id, tech_id, body, is_internal=True)
+                flash('Message sent to admin.', 'success')
             return redirect(url_for('technician.task_detail', request_id=request_id))
 
     return render_template('technician/task_detail.html',

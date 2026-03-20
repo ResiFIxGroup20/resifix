@@ -6,7 +6,6 @@
 
 {% block content %}
 <div class="form-container">
-    <!-- Main Form -->
     <div class="form-card">
         <div class="form-card-header">
             <i class="bi bi-pencil-square"></i>
@@ -15,6 +14,7 @@
 
         <form method="POST" enctype="multipart/form-data" id="requestForm">
             <div class="form-sections">
+
                 <!-- Section 1: Basic Info -->
                 <div class="form-section">
                     <div class="section-label">
@@ -26,16 +26,11 @@
                         <label class="form-label-custom">Request Title *</label>
                         <div class="input-icon-wrap">
                             <i class="bi bi-card-heading input-icon"></i>
-                            <input type="text" 
-                                   name="title" 
-                                   class="form-control-custom" 
-                                   placeholder="e.g., Leaking faucet, Broken light" 
-                                   required
-                                   maxlength="100">
+                            <input type="text" name="title" class="form-control-custom"
+                                   placeholder="e.g., Leaking faucet, Broken light"
+                                   required maxlength="100">
                         </div>
-                        <div class="char-count">
-                            <span id="titleCount">0</span>/100
-                        </div>
+                        <div class="char-count"><span id="titleCount">0</span>/100</div>
                     </div>
 
                     <div class="form-group-custom">
@@ -61,31 +56,19 @@
                         <div class="priority-selector">
                             <label class="priority-option">
                                 <input type="radio" name="priority" value="low" checked>
-                                <span class="priority-label">
-                                    <i class="bi bi-arrow-down-circle"></i>
-                                    Low
-                                </span>
+                                <span class="priority-label"><i class="bi bi-arrow-down-circle"></i> Low</span>
                             </label>
                             <label class="priority-option">
                                 <input type="radio" name="priority" value="medium">
-                                <span class="priority-label">
-                                    <i class="bi bi-dash-circle"></i>
-                                    Medium
-                                </span>
+                                <span class="priority-label"><i class="bi bi-dash-circle"></i> Medium</span>
                             </label>
                             <label class="priority-option">
                                 <input type="radio" name="priority" value="high">
-                                <span class="priority-label">
-                                    <i class="bi bi-arrow-up-circle"></i>
-                                    High
-                                </span>
+                                <span class="priority-label"><i class="bi bi-arrow-up-circle"></i> High</span>
                             </label>
                             <label class="priority-option">
                                 <input type="radio" name="priority" value="critical">
-                                <span class="priority-label">
-                                    <i class="bi bi-exclamation-triangle"></i>
-                                    Critical
-                                </span>
+                                <span class="priority-label"><i class="bi bi-exclamation-triangle"></i> Critical</span>
                             </label>
                         </div>
                     </div>
@@ -99,21 +82,84 @@
                     </div>
 
                     <div class="form-group-custom">
-                        <label class="form-label-custom">What's the problem? *</label>
-                        <textarea name="description" 
-                                  class="form-textarea-custom" 
-                                  rows="4" 
-                                  placeholder="Please describe the issue in detail..."
+                        <!-- Label row with clear + mic buttons -->
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; flex-wrap:wrap; gap:6px;">
+                            <label class="form-label-custom" style="margin-bottom:0;">What's the problem? *</label>
+                            <div style="display:flex; gap:6px;">
+
+                                <!-- Clear button — only visible when there is text -->
+                                <button type="button" id="clearBtn" title="Clear description" style="
+                                    display: none;
+                                    align-items: center;
+                                    gap: 6px;
+                                    background: rgba(239,68,68,0.08);
+                                    border: 1px solid rgba(239,68,68,0.25);
+                                    border-radius: 20px;
+                                    padding: 5px 12px;
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    color: var(--danger);
+                                    cursor: pointer;
+                                    transition: all 0.2s;
+                                    font-family: var(--font);
+                                ">
+                                    <i class="bi bi-x-circle-fill"></i>
+                                    <span>Clear</span>
+                                </button>
+
+                                <!-- Mic button -->
+                                <button type="button" id="micBtn" title="Click to describe the problem using your voice" style="
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 6px;
+                                    background: var(--bg-3);
+                                    border: 1px solid var(--border-strong);
+                                    border-radius: 20px;
+                                    padding: 5px 12px;
+                                    font-size: 12px;
+                                    font-weight: 600;
+                                    color: var(--text-muted);
+                                    cursor: pointer;
+                                    transition: all 0.2s;
+                                    font-family: var(--font);
+                                ">
+                                    <i class="bi bi-mic-fill" id="micIcon"></i>
+                                    <span id="micLabel">Speak your problem</span>
+                                </button>
+
+                            </div>
+                        </div>
+
+                        <!-- Listening status indicator -->
+                        <div id="speechStatus" style="
+                            display: none;
+                            align-items: center;
+                            gap: 8px;
+                            background: rgba(37,99,235,0.08);
+                            border: 1px solid rgba(37,99,235,0.2);
+                            border-radius: 6px;
+                            padding: 8px 14px;
+                            font-size: 12px;
+                            color: var(--primary);
+                            margin-bottom: 8px;
+                        ">
+                            <span style="width:8px; height:8px; border-radius:50%; background:var(--danger); display:inline-block; animation:pulse 1s infinite;"></span>
+                            <span>Listening… speak clearly and click Stop when done.</span>
+                        </div>
+
+                        <textarea name="description" id="descriptionField" class="form-textarea-custom"
+                                  rows="5" placeholder="Describe the issue in detail, or use the microphone button above to speak…"
                                   required></textarea>
+                        <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">
+                            <i class="bi bi-info-circle"></i> Tip: You can speak and also edit the text afterwards.
+                        </div>
                     </div>
 
                     <div class="form-group-custom">
                         <label class="form-label-custom">Specific Location (optional)</label>
                         <div class="input-icon-wrap">
                             <i class="bi bi-geo-alt input-icon"></i>
-                            <input type="text" 
-                                   name="location_details" 
-                                   class="form-control-custom" 
+                            <input type="text" name="location_details" class="form-control-custom"
                                    placeholder="e.g., Bathroom sink, Bedroom window, etc.">
                         </div>
                         <small class="text-muted">Be specific about where the issue is located</small>
@@ -133,18 +179,11 @@
                             <i class="bi bi-cloud-upload upload-icon"></i>
                             <p class="upload-text">Drag & drop images here or click to browse</p>
                             <p class="upload-hint">Supported: JPG, PNG, GIF (Max 5MB each)</p>
-                            <input type="file" 
-                                   name="images" 
-                                   id="fileInput" 
-                                   multiple 
-                                   accept="image/*" 
-                                   style="display: none;">
+                            <input type="file" name="images" id="fileInput" multiple accept="image/*" style="display:none;">
                             <button type="button" class="btn-ghost" onclick="document.getElementById('fileInput').click()">
                                 <i class="bi bi-folder2-open"></i> Browse Files
                             </button>
                         </div>
-                        
-                        <!-- Preview Area -->
                         <div class="preview-area" id="previewArea"></div>
                     </div>
                 </div>
@@ -158,6 +197,7 @@
                         <i class="bi bi-check-lg"></i> Submit Request
                     </button>
                 </div>
+
             </div>
         </form>
     </div>
@@ -175,25 +215,22 @@
             <li>Add your preferred contact time</li>
             <li>For emergencies, call the front desk</li>
         </ul>
-        
+
+        <div style="background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2); border-radius:8px; padding:14px; margin-top:16px;">
+            <div style="font-size:12px; font-weight:700; color:var(--primary); margin-bottom:6px; display:flex; align-items:center; gap:6px;">
+                <i class="bi bi-mic-fill"></i> Voice Input
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); line-height:1.5;">
+                Can't find the right words? Click <strong>Speak your problem</strong> and just talk — your words will be typed automatically.
+            </div>
+        </div>
+
         <div class="priority-guide">
             <div class="priority-guide-title">Priority Guide</div>
-            <div class="guide-item">
-                <span class="priority-badge priority-low">Low</span>
-                <span>Cosmetic issues, minor fixes</span>
-            </div>
-            <div class="guide-item">
-                <span class="priority-badge priority-medium">Medium</span>
-                <span>Functional issues, not urgent</span>
-            </div>
-            <div class="guide-item">
-                <span class="priority-badge priority-high">High</span>
-                <span>Affects daily use, needs attention</span>
-            </div>
-            <div class="guide-item">
-                <span class="priority-badge priority-critical">Critical</span>
-                <span>Emergency - water leak, no power, etc.</span>
-            </div>
+            <div class="guide-item"><span class="priority-badge priority-low">Low</span><span>Cosmetic issues, minor fixes</span></div>
+            <div class="guide-item"><span class="priority-badge priority-medium">Medium</span><span>Functional issues, not urgent</span></div>
+            <div class="guide-item"><span class="priority-badge priority-high">High</span><span>Affects daily use, needs attention</span></div>
+            <div class="guide-item"><span class="priority-badge priority-critical">Critical</span><span>Emergency - water leak, no power, etc.</span></div>
         </div>
     </div>
 </div>
@@ -201,159 +238,200 @@
 
 {% block scripts %}
 <script>
-    // Title character counter
-    const titleInput = document.querySelector('input[name="title"]');
-    const titleCount = document.getElementById('titleCount');
-    
-    titleInput.addEventListener('input', function() {
-        titleCount.textContent = this.value.length;
+// ── Title character counter ──────────────────────────────────────────────
+const titleInput = document.querySelector('input[name="title"]');
+const titleCount = document.getElementById('titleCount');
+titleInput.addEventListener('input', function() {
+    titleCount.textContent = this.value.length;
+});
+
+// ── Image upload preview ─────────────────────────────────────────────────
+const dropArea    = document.getElementById('dropArea');
+const fileInput   = document.getElementById('fileInput');
+const previewArea = document.getElementById('previewArea');
+
+['dragenter','dragover','dragleave','drop'].forEach(e => {
+    dropArea.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); });
+    document.body.addEventListener(e, ev => { ev.preventDefault(); ev.stopPropagation(); });
+});
+['dragenter','dragover'].forEach(e => dropArea.addEventListener(e, () => dropArea.classList.add('highlight')));
+['dragleave','drop'].forEach(e => dropArea.addEventListener(e, () => dropArea.classList.remove('highlight')));
+
+dropArea.addEventListener('drop', e => {
+    fileInput.files = e.dataTransfer.files;
+    handleFiles({ target: { files: e.dataTransfer.files } });
+});
+fileInput.addEventListener('change', handleFiles);
+
+function handleFiles(e) {
+    previewArea.innerHTML = '';
+    Array.from(e.target.files).forEach(file => {
+        if (!file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+            const div = document.createElement('div');
+            div.className = 'preview-item';
+            div.innerHTML = `
+                <img src="${ev.target.result}" alt="Preview">
+                <button type="button" class="remove-preview" onclick="this.parentElement.remove()">
+                    <i class="bi bi-x"></i>
+                </button>`;
+            previewArea.appendChild(div);
+        };
+        reader.readAsDataURL(file);
     });
+}
 
-    // Image upload preview
-    const dropArea = document.getElementById('dropArea');
-    const fileInput = document.getElementById('fileInput');
-    const previewArea = document.getElementById('previewArea');
+// ── Clear button ─────────────────────────────────────────────────────────
+const clearBtn  = document.getElementById('clearBtn');
+const descField = document.getElementById('descriptionField');
 
-    // Prevent default drag behaviors
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, preventDefaults, false);
-        document.body.addEventListener(eventName, preventDefaults, false);
-    });
+function updateClearBtn() {
+    clearBtn.style.display = descField.value.trim() ? 'flex' : 'none';
+}
 
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
+descField.addEventListener('input', updateClearBtn);
 
-    // Highlight drop area on drag
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropArea.addEventListener(eventName, highlight, false);
-    });
+clearBtn.addEventListener('click', () => {
+    descField.value = '';
+    updateClearBtn();
+    descField.focus();
+});
 
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropArea.addEventListener(eventName, unhighlight, false);
-    });
+// ── Speech to Text ───────────────────────────────────────────────────────
+const micBtn       = document.getElementById('micBtn');
+const micIcon      = document.getElementById('micIcon');
+const micLabel     = document.getElementById('micLabel');
+const speechStatus = document.getElementById('speechStatus');
 
-    function highlight() {
-        dropArea.classList.add('highlight');
-    }
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-    function unhighlight() {
-        dropArea.classList.remove('highlight');
-    }
+if (!SpeechRecognition) {
+    micBtn.style.display = 'none';
+} else {
+    const recognition          = new SpeechRecognition();
+    recognition.lang           = 'en-ZA';
+    recognition.continuous     = true;
+    recognition.interimResults = true;
 
-    // Handle dropped files
-    dropArea.addEventListener('drop', handleDrop, false);
-    fileInput.addEventListener('change', handleFiles, false);
+    let isListening = false;
+    let savedText   = '';
 
-    function handleDrop(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        fileInput.files = files;
-        handleFiles({ target: { files: files } });
-    }
+    recognition.onstart = () => {
+        isListening                = true;
+        savedText                  = descField.value;
+        micBtn.style.background    = 'rgba(239,68,68,0.12)';
+        micBtn.style.borderColor   = 'rgba(239,68,68,0.4)';
+        micBtn.style.color         = 'var(--danger)';
+        micIcon.className          = 'bi bi-stop-circle-fill';
+        micLabel.textContent       = 'Stop listening';
+        speechStatus.style.display = 'flex';
+    };
 
-    function handleFiles(e) {
-        const files = e.target.files;
-        previewArea.innerHTML = '';
-        
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const preview = document.createElement('div');
-                    preview.className = 'preview-item';
-                    preview.innerHTML = `
-                        <img src="${e.target.result}" alt="Preview">
-                        <button type="button" class="remove-preview" onclick="this.parentElement.remove()">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    `;
-                    previewArea.appendChild(preview);
-                };
-                reader.readAsDataURL(file);
+    recognition.onresult = (event) => {
+        let interim = '';
+        let final   = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                final += transcript + ' ';
+            } else {
+                interim += transcript;
             }
         }
+
+        descField.value = savedText + final + interim;
+        updateClearBtn();
+
+        if (final) {
+            savedText = savedText + final;
+        }
+    };
+
+    recognition.onerror = (event) => {
+        if (event.error === 'not-allowed') {
+            alert('Microphone access was denied. Please allow microphone access in your browser settings and try again.');
+        } else if (event.error !== 'no-speech') {
+            console.warn('Speech error:', event.error);
+        }
+        stopListening();
+    };
+
+    recognition.onend = () => {
+        if (isListening) {
+            recognition.start();
+        }
+    };
+
+    function stopListening() {
+        isListening                = false;
+        recognition.stop();
+        micBtn.style.background    = '';
+        micBtn.style.borderColor   = '';
+        micBtn.style.color         = '';
+        micIcon.className          = 'bi bi-mic-fill';
+        micLabel.textContent       = 'Speak your problem';
+        speechStatus.style.display = 'none';
     }
+
+    micBtn.addEventListener('click', () => {
+        if (!isListening) {
+            recognition.start();
+        } else {
+            stopListening();
+        }
+    });
+}
 </script>
 
 <style>
-    .upload-area {
-        border: 2px dashed var(--border-strong);
-        border-radius: var(--radius);
-        padding: 40px 20px;
-        text-align: center;
-        background: var(--bg-3);
-        cursor: pointer;
-        transition: all 0.15s;
-        margin-bottom: 20px;
-    }
-
-    .upload-area.highlight {
-        border-color: var(--accent);
-        background: var(--accent-dim);
-    }
-
-    .upload-icon {
-        font-size: 48px;
-        color: var(--text-muted);
-        margin-bottom: 16px;
-        display: block;
-    }
-
-    .upload-text {
-        font-size: 16px;
-        color: var(--text);
-        margin-bottom: 8px;
-    }
-
-    .upload-hint {
-        font-size: 12px;
-        color: var(--text-faint);
-        margin-bottom: 16px;
-    }
-
-    .preview-area {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-        gap: 12px;
-        margin-top: 16px;
-    }
-
-    .preview-item {
-        position: relative;
-        aspect-ratio: 1;
-        border-radius: var(--radius-sm);
-        overflow: hidden;
-        border: 1px solid var(--border-strong);
-    }
-
-    .preview-item img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .remove-preview {
-        position: absolute;
-        top: 4px;
-        right: 4px;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: rgba(0,0,0,0.5);
-        border: none;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background 0.15s;
-    }
-
-    .remove-preview:hover {
-        background: var(--danger);
-    }
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.8); }
+}
+.upload-area {
+    border: 2px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 40px 20px;
+    text-align: center;
+    background: var(--bg-3);
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 20px;
+}
+.upload-area.highlight { border-color: var(--accent); background: var(--accent-dim); }
+.upload-icon { font-size: 48px; color: var(--text-muted); margin-bottom: 16px; display: block; }
+.upload-text { font-size: 16px; color: var(--text); margin-bottom: 8px; }
+.upload-hint { font-size: 12px; color: var(--text-faint); margin-bottom: 16px; }
+.preview-area {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+}
+.preview-item {
+    position: relative;
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    border: 1px solid var(--border-strong);
+}
+.preview-item img { width: 100%; height: 100%; object-fit: cover; }
+.remove-preview {
+    position: absolute;
+    top: 4px; right: 4px;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+    border: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.remove-preview:hover { background: var(--danger); }
 </style>
 {% endblock %}

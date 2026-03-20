@@ -3,145 +3,408 @@
 {% block title %}{{ req.ticket_no }} — ResiFix{% endblock %}
 {% block page_title %}Request Detail{% endblock %}
 
-
 {% block content %}
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-  <a href="{{ url_for('admin.admin_dashboard') }}" class="btn btn-sm btn-outline-secondary">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+  <a href="{{ url_for('admin.admin_dashboard') }}" class="btn-ghost">
     <i class="bi bi-arrow-left"></i> Back to Dashboard
   </a>
-  <span class="font-monospace text-muted">{{ req.ticket_no }}</span>
+  <span class="font-mono" style="font-size:12px; color:var(--text-muted);">{{ req.ticket_no }}</span>
 </div>
 
-<div class="row g-4">
+<div class="detail-layout">
 
-  <!-- Left: Request info -->
-  <div class="col-lg-8">
+  <!-- ── Left ──────────────────────────────────────────────────────────── -->
+  <div>
 
-    <div class="card mb-4">
-      <div class="card-body">
-        <h5 class="card-title mb-1">{{ req.title }}</h5>
-        <p class="text-muted small mb-3">
-          Room {{ req.room_number or '—' }} &nbsp;·&nbsp; {{ req.category or '—' }}
-          &nbsp;·&nbsp; Submitted {{ req.submitted_at[:10] if req.submitted_at else '—' }}
-          {% if req.is_worsening %}
-            &nbsp;·&nbsp; <span class="text-danger fw-semibold"><i class="bi bi-arrow-up-right"></i> Worsening</span>
-          {% endif %}
-        </p>
-
-        <!-- Priority + Status badges -->
-        <div class="mb-3">
+    <div class="detail-main" style="margin-bottom:20px;">
+      <div class="detail-header">
+        <span class="detail-ticket font-mono">{{ req.submitted_at[:10] if req.submitted_at else '—' }}</span>
+        <div class="detail-badges">
           {% set p = req.priority %}
-          <span class="badge
-            {% if p == 'critical' %}bg-danger
-            {% elif p == 'high' %}bg-warning text-dark
-            {% elif p == 'medium' %}bg-info text-dark
-            {% else %}bg-secondary{% endif %} me-2">
-            {{ p | title }} Priority
-          </span>
-
+          <span class="priority-badge priority-{{ p }}">{{ p|title }}</span>
           {% set s = req.status %}
-          <span class="badge
-            {% if s == 'pending' %}bg-warning text-dark
-            {% elif s == 'assigned' %}bg-info text-dark
-            {% elif s == 'in_progress' %}bg-primary
-            {% elif s == 'resolved' %}bg-success
-            {% elif s == 'closed' %}bg-secondary
-            {% else %}bg-light text-dark border{% endif %}">
-            {{ s | replace('_', ' ') | title }}
+          <span class="status-badge
+            {% if s == 'pending' %}badge-pending
+            {% elif s == 'assigned' %}badge-assigned
+            {% elif s == 'in_progress' %}badge-progress
+            {% elif s == 'resolved' %}badge-resolved
+            {% elif s == 'closed' %}badge-closed
+            {% else %}badge-cancelled{% endif %}">
+            {{ s|replace('_',' ')|title }}
           </span>
         </div>
-
-        <p class="mb-0">{{ req.description or 'No description provided.' }}</p>
       </div>
-    </div>
 
-    <!-- Resident info -->
-    <div class="card mb-4">
-      <div class="card-header fw-semibold">Submitted By</div>
-      <div class="card-body">
-        {% if req.resident_id in user_map %}
-          {% set resident = user_map[req.resident_id] %}
-          <strong>{{ resident.full_name }}</strong>
-          <span class="text-muted ms-2">@{{ resident.username }}</span><br>
-          <span class="small text-muted">{{ resident.email }}</span>
-        {% else %}
-          <span class="text-muted">Unknown resident</span>
+      <h2 class="detail-title">{{ req.title }}</h2>
+
+      <div class="detail-meta-row">
+        <span><i class="bi bi-building"></i> {{ req.residence or '—' }}</span>
+        <span><i class="bi bi-door-closed"></i> Room {{ req.room_number or '—' }}</span>
+        <span><i class="bi bi-tag"></i> {{ req.category|title }}</span>
+        {% if req.is_worsening %}
+        <span style="color:var(--danger);"><i class="bi bi-arrow-up-right-circle-fill"></i> Worsening</span>
         {% endif %}
       </div>
+
+      <div class="detail-description">
+        <div class="section-label-sm">Description</div>
+        <p style="line-height:1.7; color:var(--text-muted);">{{ req.description or 'No description.' }}</p>
+      </div>
+
+      {% if req.resident_id in user_map %}
+      {% set res = user_map[req.resident_id] %}
+      <div style="background:var(--bg-3); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 16px;">
+        <div class="section-label-sm" style="margin-bottom:8px;">Submitted By</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="user-avatar-sm">{{ res['full_name'][0].upper() }}</div>
+          <div>
+            <div style="font-weight:600; font-size:13px;">{{ res['full_name'] }}</div>
+            <div style="font-size:11px; color:var(--text-muted);">{{ res['email'] }}</div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
     </div>
 
-    <!-- Add internal note -->
-    <div class="card">
-      <div class="card-header fw-semibold">Add Internal Note</div>
-      <div class="card-body">
-        <form method="POST">
-          <input type="hidden" name="action" value="add_note">
-          <textarea name="note_body" class="form-control mb-2" rows="3"
-                    placeholder="Internal note (only visible to staff)..."></textarea>
-          <button type="submit" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-sticky-fill"></i> Add Note
+    <!-- Conversation -->
+    <div class="card-panel">
+      <div class="panel-header">
+        <div class="panel-title"><i class="bi bi-chat-left-text-fill"></i> Conversation</div>
+        <span style="font-size:12px; color:var(--text-muted);">{{ comments|length }} message{{ 's' if comments|length != 1 }}</span>
+      </div>
+
+      {% if comments %}
+      <div style="padding:16px; display:flex; flex-direction:column; gap:12px; max-height:440px; overflow-y:auto;">
+        {% for c in comments %}
+        {% set author = user_map.get(c['author_id']) %}
+        {% if c['is_internal'] %}
+        <div style="display:flex; gap:10px;">
+          <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+            background:rgba(245,158,11,0.15); color:#f59e0b;
+            display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+            {{ author['full_name'][0].upper() if author else '?' }}
+          </div>
+          <div style="flex:1; background:rgba(245,158,11,0.05); border:1px solid rgba(245,158,11,0.2); border-radius:8px; padding:10px 14px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px; flex-wrap:wrap;">
+              <span style="font-weight:600; font-size:13px;">{{ author['full_name'] if author else 'Staff' }}</span>
+              <span style="font-size:11px; color:var(--text-faint);">{{ author['role']|title if author else '' }}</span>
+              <span style="font-size:10px; background:rgba(245,158,11,0.15); color:#f59e0b; padding:2px 7px; border-radius:10px; font-weight:600;">🔒 Staff Only</span>
+              <span style="font-size:11px; color:var(--text-faint); margin-left:auto;">{{ c['created_at'][:16] if c['created_at'] else '' }}</span>
+            </div>
+            <div style="font-size:13.5px; line-height:1.6;">{{ c['body'] }}</div>
+          </div>
+        </div>
+        {% else %}
+        <div style="display:flex; gap:10px;">
+          <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+            background:{% if author and author['role'] == 'admin' %}var(--accent-dim){% else %}var(--bg-3){% endif %};
+            color:{% if author and author['role'] == 'admin' %}var(--accent){% else %}var(--text-muted){% endif %};
+            display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+            {{ author['full_name'][0].upper() if author else '?' }}
+          </div>
+          <div style="flex:1; background:var(--bg-3); border:1px solid var(--border); border-radius:8px; padding:10px 14px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px; flex-wrap:wrap;">
+              <span style="font-weight:600; font-size:13px;">{{ author['full_name'] if author else 'Unknown' }}</span>
+              <span style="font-size:11px; color:var(--text-faint);">{{ author['role']|title if author else '' }}</span>
+              {% if author and author['role'] == 'admin' %}
+              <span style="font-size:10px; background:var(--accent-dim); color:var(--primary); padding:2px 7px; border-radius:10px; font-weight:600;">💬 Student Reply</span>
+              {% endif %}
+              <span style="font-size:11px; color:var(--text-faint); margin-left:auto;">{{ c['created_at'][:16] if c['created_at'] else '' }}</span>
+            </div>
+            <div style="font-size:13.5px; line-height:1.6;">{{ c['body'] }}</div>
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state" style="padding:32px;">
+        <div class="empty-icon"><i class="bi bi-chat-left"></i></div>
+        <div class="empty-sub">No messages yet</div>
+      </div>
+      {% endif %}
+
+      <!-- Tab switcher + forms -->
+      <div style="padding:16px; border-top:1px solid var(--border);">
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <button type="button" id="tabPublic" onclick="switchTab('public')"
+                  style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--accent);
+                    background:var(--accent-dim); color:var(--primary); font-size:12px;
+                    font-weight:600; cursor:pointer; font-family:var(--font);">
+            💬 Reply to Student
           </button>
-        </form>
+          <button type="button" id="tabInternal" onclick="switchTab('internal')"
+                  style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--border-strong);
+                    background:var(--bg-3); color:var(--text-muted); font-size:12px;
+                    font-weight:600; cursor:pointer; font-family:var(--font);">
+            🔒 Staff Note
+          </button>
+        </div>
+
+        <!-- Reply to student form -->
+        <div id="formPublic">
+          <form method="POST">
+            <input type="hidden" name="action" value="add_reply">
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+              <button type="button" id="clearReply" style="display:none; align-items:center; gap:5px;
+                background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                color:var(--danger); cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-x-circle-fill"></i> Clear
+              </button>
+              <button type="button" id="micReply" style="display:flex; align-items:center; gap:5px;
+                background:var(--bg-3); border:1px solid var(--border-strong);
+                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                color:var(--text-muted); cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-mic-fill" id="micReplyIcon"></i>
+                <span id="micReplyLabel">Speak</span>
+              </button>
+            </div>
+            <div id="speechStatusReply" style="display:none; align-items:center; gap:8px;
+              background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);
+              border-radius:6px; padding:7px 12px; font-size:12px; color:var(--primary); margin-bottom:6px;">
+              <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
+                display:inline-block; animation:pulse 1s infinite;"></span>
+              <span>Listening… click Stop when done.</span>
+            </div>
+            <textarea name="reply_body" id="replyField" class="form-textarea-custom" rows="3"
+                      placeholder="Write a message visible to the student…"></textarea>
+            <div style="margin-top:8px;">
+              <button type="submit" class="btn-primary"><i class="bi bi-send-fill"></i> Send Reply</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Staff note form -->
+        <div id="formInternal" style="display:none;">
+          <form method="POST">
+            <input type="hidden" name="action" value="add_note">
+            <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+              <button type="button" id="clearNote" style="display:none; align-items:center; gap:5px;
+                background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                color:var(--danger); cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-x-circle-fill"></i> Clear
+              </button>
+              <button type="button" id="micNote" style="display:flex; align-items:center; gap:5px;
+                background:var(--bg-3); border:1px solid var(--border-strong);
+                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                color:var(--text-muted); cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-mic-fill" id="micNoteIcon"></i>
+                <span id="micNoteLabel">Speak</span>
+              </button>
+            </div>
+            <div id="speechStatusNote" style="display:none; align-items:center; gap:8px;
+              background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2);
+              border-radius:6px; padding:7px 12px; font-size:12px; color:#f59e0b; margin-bottom:6px;">
+              <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
+                display:inline-block; animation:pulse 1s infinite;"></span>
+              <span>Listening… click Stop when done.</span>
+            </div>
+            <textarea name="note_body" id="noteField" class="form-textarea-custom" rows="3"
+                      placeholder="Staff only note — not visible to the student…"></textarea>
+            <div style="margin-top:8px;">
+              <button type="submit" class="btn-ghost"><i class="bi bi-sticky-fill"></i> Add Note</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
 
   </div>
 
-  <!-- Right: Actions -->
-  <div class="col-lg-4">
+  <!-- ── Right ─────────────────────────────────────────────────────────── -->
+  <div class="detail-sidebar">
 
-    <!-- Assign Technician -->
-    <div class="card mb-3">
-      <div class="card-header fw-semibold">Assign Technician</div>
-      <div class="card-body">
-        {% if req.technician_id and req.technician_id in user_map %}
-          <p class="mb-2 small">
-            Currently assigned to:
-            <strong>{{ user_map[req.technician_id]['full_name'] }}</strong>
-          </p>
-        {% endif %}
-        <form method="POST">
-          <input type="hidden" name="action" value="assign">
-          <select name="technician_id" class="form-select form-select-sm mb-2">
+    <div class="action-card">
+      <div class="action-card-title">
+        <i class="bi bi-person-gear" style="color:var(--accent);"></i>
+        {% if req.technician_id %}Reassign Technician{% else %}Assign Technician{% endif %}
+      </div>
+
+      {% if req.technician_id and req.technician_id in user_map %}
+      <div style="background:var(--accent-dim); border:1px solid rgba(37,99,235,0.25);
+        border-radius:var(--radius-sm); padding:10px 12px; margin-bottom:12px;
+        display:flex; align-items:center; gap:10px;">
+        <div class="user-avatar-sm">{{ user_map[req.technician_id]['full_name'][0].upper() }}</div>
+        <div>
+          <div style="font-size:11px; color:var(--text-muted);">Currently assigned</div>
+          <div style="font-weight:600; font-size:13px;">{{ user_map[req.technician_id]['full_name'] }}</div>
+          {% if user_map[req.technician_id]['specialization'] %}
+          <div style="font-size:11px; color:var(--primary);">{{ user_map[req.technician_id]['specialization']|title }}</div>
+          {% endif %}
+        </div>
+      </div>
+      {% endif %}
+
+      <form method="POST">
+        <input type="hidden" name="action" value="assign">
+        {% if technicians %}
+        <div class="form-group-custom">
+          <select name="technician_id" class="form-select-custom">
             <option value="">— Select Technician —</option>
             {% for tech in technicians %}
-            <option value="{{ tech.id }}"
-              {% if req.technician_id == tech.id %}selected{% endif %}>
-              {{ tech.full_name }}
+            <option value="{{ tech.id }}" {% if req.technician_id == tech.id %}selected{% endif %}>
+              {{ tech.full_name }} — {{ tech.specialization|title if tech.specialization else 'General' }}
             </option>
             {% endfor %}
           </select>
-          <button type="submit" class="btn btn-primary btn-sm w-100">
-            <i class="bi bi-person-check-fill"></i>
-            {% if req.technician_id %}Reassign{% else %}Assign{% endif %}
+        </div>
+        <button type="submit" class="btn-primary w-100">
+          <i class="bi bi-person-check-fill"></i>
+          {% if req.technician_id %}Reassign{% else %}Assign{% endif %}
+        </button>
+        {% else %}
+          {% if not req.technician_id %}
+          <div style="background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2);
+            border-radius:var(--radius-sm); padding:10px 12px; font-size:12px;
+            color:var(--warning); margin-bottom:12px;">
+            <i class="bi bi-exclamation-triangle-fill me-1"></i>
+            No available technicians for this residence and category.
+          </div>
+          <button type="button" class="btn-ghost w-100"
+                  onclick="switchTab('public'); document.getElementById('replyField').value='No technician is currently available for your request. We will assign one as soon as possible. Thank you for your patience.'; document.getElementById('clearReply').style.display='flex';">
+            <i class="bi bi-chat-left-fill"></i> Notify Student
           </button>
-        </form>
-      </div>
+          {% else %}
+          <div style="background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.2);
+            border-radius:var(--radius-sm); padding:10px 12px; font-size:12px; color:var(--success);">
+            <i class="bi bi-check-circle-fill me-1"></i>
+            Technician assigned. No other technicians available right now.
+          </div>
+          {% endif %}
+        {% endif %}
+      </form>
     </div>
 
-    <!-- Update Status -->
-    <div class="card">
-      <div class="card-header fw-semibold">Update Status</div>
-      <div class="card-body">
-        <form method="POST">
-          <input type="hidden" name="action" value="update_status">
-          <select name="status" class="form-select form-select-sm mb-2">
-            {% for s in ['pending','assigned','in_progress','resolved','closed','cancelled'] %}
-            <option value="{{ s }}" {% if req.status == s %}selected{% endif %}>
-              {{ s | replace('_', ' ') | title }}
+    <div class="action-card">
+      <div class="action-card-title">
+        <i class="bi bi-info-circle-fill" style="color:var(--accent);"></i> Current Status
+      </div>
+      {% set s = req.status %}
+      <div style="margin-bottom:12px;">
+        <span class="status-badge
+          {% if s == 'pending' %}badge-pending
+          {% elif s == 'assigned' %}badge-assigned
+          {% elif s == 'in_progress' %}badge-progress
+          {% elif s == 'resolved' %}badge-resolved
+          {% elif s == 'closed' %}badge-closed
+          {% else %}badge-cancelled{% endif %}"
+          style="font-size:13px; padding:5px 14px;">
+          {{ s|replace('_',' ')|title }}
+        </span>
+      </div>
+      <div style="font-size:11px; color:var(--text-faint); margin-bottom:12px;">
+        Updates automatically. Use below to manually override.
+      </div>
+      <form method="POST">
+        <input type="hidden" name="action" value="update_status">
+        <div class="form-group-custom">
+          <select name="status" class="form-select-custom">
+            {% for st in ['pending','assigned','in_progress','resolved','closed','cancelled'] %}
+            <option value="{{ st }}" {% if req.status == st %}selected{% endif %}>
+              {{ st|replace('_',' ')|title }}
             </option>
             {% endfor %}
           </select>
-          <button type="submit" class="btn btn-outline-primary btn-sm w-100">
-            <i class="bi bi-arrow-repeat"></i> Update Status
-          </button>
-        </form>
-      </div>
+        </div>
+        <button type="submit" class="btn-ghost w-100">
+          <i class="bi bi-arrow-repeat"></i> Override Status
+        </button>
+      </form>
+    </div>
+
+    <div class="info-card">
+      <div class="info-row"><span>Ticket</span><span class="font-mono">{{ req.ticket_no }}</span></div>
+      <div class="info-row"><span>Category</span><span>{{ req.category|title }}</span></div>
+      <div class="info-row"><span>Residence</span><span>{{ req.residence or '—' }}</span></div>
+      <div class="info-row"><span>Room</span><span>{{ req.room_number or '—' }}</span></div>
+      <div class="info-row"><span>Submitted</span><span>{{ req.submitted_at[:10] if req.submitted_at else '—' }}</span></div>
+      {% if req.resolved_at %}
+      <div class="info-row"><span>Resolved</span><span>{{ req.resolved_at[:10] }}</span></div>
+      {% endif %}
     </div>
 
   </div>
 </div>
+{% endblock %}
 
+{% block scripts %}
+<script>
+function switchTab(tab) {
+    const pubForm = document.getElementById('formPublic');
+    const intForm = document.getElementById('formInternal');
+    const pubTab  = document.getElementById('tabPublic');
+    const intTab  = document.getElementById('tabInternal');
+    if (tab === 'public') {
+        pubForm.style.display = 'block'; intForm.style.display = 'none';
+        pubTab.style.background = 'var(--accent-dim)'; pubTab.style.borderColor = 'var(--accent)'; pubTab.style.color = 'var(--primary)';
+        intTab.style.background = 'var(--bg-3)'; intTab.style.borderColor = 'var(--border-strong)'; intTab.style.color = 'var(--text-muted)';
+    } else {
+        intForm.style.display = 'block'; pubForm.style.display = 'none';
+        intTab.style.background = 'rgba(245,158,11,0.1)'; intTab.style.borderColor = 'rgba(245,158,11,0.3)'; intTab.style.color = '#f59e0b';
+        pubTab.style.background = 'var(--bg-3)'; pubTab.style.borderColor = 'var(--border-strong)'; pubTab.style.color = 'var(--text-muted)';
+    }
+}
 
+function setupVoiceInput(textareaId, micBtnId, micIconId, micLabelId, clearBtnId, statusId) {
+    const field     = document.getElementById(textareaId);
+    const micBtn    = document.getElementById(micBtnId);
+    const micIcon   = document.getElementById(micIconId);
+    const micLabel  = document.getElementById(micLabelId);
+    const clearBtn  = document.getElementById(clearBtnId);
+    const statusDiv = document.getElementById(statusId);
+    if (!field || !micBtn) return;
+
+    function updateClear() { clearBtn.style.display = field.value.trim() ? 'flex' : 'none'; }
+    field.addEventListener('input', updateClear);
+    clearBtn.addEventListener('click', () => { field.value = ''; updateClear(); field.focus(); });
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { micBtn.style.display = 'none'; return; }
+
+    const rec = new SR();
+    rec.lang = 'en-ZA'; rec.continuous = true; rec.interimResults = true;
+    let listening = false, saved = '';
+
+    rec.onstart = () => {
+        listening = true; saved = field.value;
+        micBtn.style.background = 'rgba(239,68,68,0.12)'; micBtn.style.borderColor = 'rgba(239,68,68,0.4)'; micBtn.style.color = 'var(--danger)';
+        micIcon.className = 'bi bi-stop-circle-fill'; micLabel.textContent = 'Stop'; statusDiv.style.display = 'flex';
+    };
+    rec.onresult = (e) => {
+        let interim = '', final = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+            const t = e.results[i][0].transcript;
+            if (e.results[i].isFinal) final += t + ' '; else interim += t;
+        }
+        field.value = saved + final + interim;
+        if (final) saved = saved + final;
+        updateClear();
+    };
+    rec.onerror = (e) => {
+        if (e.error === 'not-allowed') alert('Microphone access denied. Please allow microphone access and try again.');
+        stop();
+    };
+    rec.onend = () => { if (listening) rec.start(); };
+
+    function stop() {
+        listening = false; rec.stop();
+        micBtn.style.background = ''; micBtn.style.borderColor = ''; micBtn.style.color = '';
+        micIcon.className = 'bi bi-mic-fill'; micLabel.textContent = 'Speak'; statusDiv.style.display = 'none';
+    }
+    micBtn.addEventListener('click', () => { if (!listening) rec.start(); else stop(); });
+}
+
+setupVoiceInput('replyField','micReply','micReplyIcon','micReplyLabel','clearReply','speechStatusReply');
+setupVoiceInput('noteField','micNote','micNoteIcon','micNoteLabel','clearNote','speechStatusNote');
+</script>
+
+<style>
+@keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:0.4; transform:scale(0.8); }
+}
+</style>
 {% endblock %}

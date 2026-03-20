@@ -98,7 +98,7 @@ def new_request():
                     ).fetchone()
                     conn.close()
                     if row:
-                        save_image(row['id'], os.path.join('uploads', filename))
+                        save_image(row['id'], 'uploads/' + filename)
 
         flash(f'Request {ticket_no} submitted successfully!', 'success')
         return redirect(url_for('resident.dashboard'))

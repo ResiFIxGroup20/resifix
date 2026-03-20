@@ -43,7 +43,6 @@ def get_all_residences():
     return residences
 
 def get_all_residences_all():
-    """Get ALL residences including inactive ones (for admin management page)."""
     conn = get_connection()
     residences = conn.execute(
         "SELECT * FROM residences ORDER BY is_active DESC, name ASC"
@@ -51,13 +50,9 @@ def get_all_residences_all():
     conn.close()
     return residences
 
-
 def get_residence_by_id(residence_id):
-    """Get a single residence by ID."""
     conn = get_connection()
-    res = conn.execute(
-        "SELECT * FROM residences WHERE id = ?", (residence_id,)
-    ).fetchone()
+    res = conn.execute("SELECT * FROM residences WHERE id = ?", (residence_id,)).fetchone()
     conn.close()
     return res
 
@@ -86,7 +81,8 @@ def create_user(username, email, password, full_name, room_number,
     conn = get_connection()
     try:
         conn.execute("""
-            INSERT INTO users (username, email, password, full_name, room_number, role, residence, specialization)
+            INSERT INTO users
+              (username, email, password, full_name, room_number, role, residence, specialization)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (username, email, password, full_name, room_number, role, residence, specialization))
         conn.commit()
@@ -128,7 +124,12 @@ def get_all_technicians():
     conn.close()
     return technicians
 
-def get_available_technicians_for_request(residence, category):
+def get_available_technicians_for_request(residence, category, exclude_request_id=None):
+    """
+    Returns active technicians matching residence and category.
+    exclude_request_id: skips this request in the busy-check so the currently
+    assigned technician still appears in the reassign dropdown.
+    """
     category_map = {
         'Plumbing': 'plumbing', 'Electrical': 'electrical', 'Furniture': 'furniture',
         'Appliance': 'appliance', 'Internet': 'internet', 'Cleaning': 'cleaning',
@@ -138,18 +139,21 @@ def get_available_technicians_for_request(residence, category):
     conn = get_connection()
     technicians = conn.execute("""
         SELECT * FROM users
-        WHERE role = 'technician' AND is_active = 1 AND residence = ?
+        WHERE role = 'technician'
+          AND is_active = 1
+          AND residence = ?
           AND (specialization = ? OR specialization = 'general')
           AND id NOT IN (
               SELECT technician_id FROM maintenance_requests
-              WHERE status NOT IN ('resolved','closed','cancelled') AND technician_id IS NOT NULL
+              WHERE status NOT IN ('resolved', 'closed', 'cancelled')
+                AND technician_id IS NOT NULL
+                AND (? IS NULL OR id != ?)
           )
-    """, (residence, specialization)).fetchall()
+    """, (residence, specialization, exclude_request_id, exclude_request_id)).fetchall()
     conn.close()
     return technicians
 
 def update_user(user_id, full_name, email, room_number):
-    """Legacy — prefer update_profile."""
     conn = get_connection()
     conn.execute("UPDATE users SET full_name=?, email=?, room_number=? WHERE id=?",
                  (full_name, email, room_number, user_id))
@@ -157,7 +161,6 @@ def update_user(user_id, full_name, email, room_number):
     conn.close()
 
 def update_technician_profile(user_id, full_name, email):
-    """Legacy — prefer update_profile."""
     conn = get_connection()
     conn.execute("UPDATE users SET full_name=?, email=? WHERE id=?", (full_name, email, user_id))
     conn.commit()
@@ -165,7 +168,6 @@ def update_technician_profile(user_id, full_name, email):
 
 def update_profile(user_id, full_name, email,
                    room_number=None, residence=None, specialization=None):
-    """Universal profile update for residents, technicians and admin edits."""
     conn = get_connection()
     conn.execute("UPDATE users SET full_name=?, email=? WHERE id=?", (full_name, email, user_id))
     if room_number is not None:
@@ -192,7 +194,8 @@ def generate_ticket_number():
     conn.close()
     return f"TKT-{str(count + 1).zfill(5)}"
 
-def create_request(resident_id, room_number, category, priority, title, description, residence=None):
+def create_request(resident_id, room_number, category, priority,
+                   title, description, residence=None):
     conn = get_connection()
     ticket_no = generate_ticket_number()
     try:
@@ -200,7 +203,8 @@ def create_request(resident_id, room_number, category, priority, title, descript
             INSERT INTO maintenance_requests
               (ticket_no, resident_id, room_number, residence, category, priority, title, description)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (ticket_no, resident_id, room_number, residence, category, priority, title, description))
+        """, (ticket_no, resident_id, room_number, residence,
+              category, priority, title, description))
         conn.commit()
         return ticket_no
     finally:
@@ -208,7 +212,9 @@ def create_request(resident_id, room_number, category, priority, title, descript
 
 def get_request_by_id(request_id):
     conn = get_connection()
-    req = conn.execute("SELECT * FROM maintenance_requests WHERE id=?", (request_id,)).fetchone()
+    req = conn.execute(
+        "SELECT * FROM maintenance_requests WHERE id=?", (request_id,)
+    ).fetchone()
     conn.close()
     return req
 
@@ -242,7 +248,9 @@ def update_request_status(request_id, status):
     conn = get_connection()
     resolved_at = datetime.now() if status == 'resolved' else None
     conn.execute("""
-        UPDATE maintenance_requests SET status=?, updated_at=?, resolved_at=? WHERE id=?
+        UPDATE maintenance_requests
+        SET status=?, updated_at=?, resolved_at=?
+        WHERE id=?
     """, (status, datetime.now(), resolved_at, request_id))
     conn.commit()
     conn.close()
@@ -250,14 +258,19 @@ def update_request_status(request_id, status):
 def assign_technician(request_id, technician_id):
     conn = get_connection()
     conn.execute("""
-        UPDATE maintenance_requests SET technician_id=?, status='assigned', updated_at=? WHERE id=?
+        UPDATE maintenance_requests
+        SET technician_id=?, status='assigned', updated_at=?
+        WHERE id=?
     """, (technician_id, datetime.now(), request_id))
     conn.commit()
     conn.close()
 
 def mark_worsening(request_id, is_worsening):
     conn = get_connection()
-    conn.execute("UPDATE maintenance_requests SET is_worsening=? WHERE id=?", (is_worsening, request_id))
+    conn.execute(
+        "UPDATE maintenance_requests SET is_worsening=? WHERE id=?",
+        (is_worsening, request_id)
+    )
     conn.commit()
     conn.close()
 
@@ -266,16 +279,30 @@ def mark_worsening(request_id, is_worsening):
 
 def add_comment(request_id, author_id, body, is_internal=False):
     conn = get_connection()
-    conn.execute("INSERT INTO comments (request_id, author_id, body, is_internal) VALUES (?,?,?,?)",
-                 (request_id, author_id, body, is_internal))
+    conn.execute(
+        "INSERT INTO comments (request_id, author_id, body, is_internal) VALUES (?,?,?,?)",
+        (request_id, author_id, body, is_internal)
+    )
     conn.commit()
     conn.close()
 
-def get_comments_by_request(request_id, include_internal=False):
+def get_comments_by_request(request_id, include_internal=False, staff_only=False):
+    """
+    Visibility rules:
+    - Default            → public only (student sees this)
+    - include_internal   → everything (admin sees this)
+    - staff_only         → internal only (technician sees this — not student-admin chat)
+    """
     conn = get_connection()
-    if include_internal:
+    if staff_only:
         comments = conn.execute(
-            "SELECT * FROM comments WHERE request_id=? ORDER BY created_at ASC", (request_id,)
+            "SELECT * FROM comments WHERE request_id=? AND is_internal=1 ORDER BY created_at ASC",
+            (request_id,)
+        ).fetchall()
+    elif include_internal:
+        comments = conn.execute(
+            "SELECT * FROM comments WHERE request_id=? ORDER BY created_at ASC",
+            (request_id,)
         ).fetchall()
     else:
         comments = conn.execute(
@@ -290,8 +317,10 @@ def get_comments_by_request(request_id, include_internal=False):
 
 def create_notification(user_id, message, request_id=None, type='in_app'):
     conn = get_connection()
-    conn.execute("INSERT INTO notifications (user_id, request_id, message, type) VALUES (?,?,?,?)",
-                 (user_id, request_id, message, type))
+    conn.execute(
+        "INSERT INTO notifications (user_id, request_id, message, type) VALUES (?,?,?,?)",
+        (user_id, request_id, message, type)
+    )
     conn.commit()
     conn.close()
 
@@ -322,20 +351,26 @@ def mark_notifications_read(user_id):
 
 def create_rating(request_id, resident_id, technician_id, score, review):
     conn = get_connection()
-    conn.execute("INSERT INTO ratings (request_id, resident_id, technician_id, score, review) VALUES (?,?,?,?,?)",
-                 (request_id, resident_id, technician_id, score, review))
+    conn.execute(
+        "INSERT INTO ratings (request_id, resident_id, technician_id, score, review) VALUES (?,?,?,?,?)",
+        (request_id, resident_id, technician_id, score, review)
+    )
     conn.commit()
     conn.close()
 
 def get_ratings_by_technician(technician_id):
     conn = get_connection()
-    ratings = conn.execute("SELECT * FROM ratings WHERE technician_id=?", (technician_id,)).fetchall()
+    ratings = conn.execute(
+        "SELECT * FROM ratings WHERE technician_id=?", (technician_id,)
+    ).fetchall()
     conn.close()
     return ratings
 
 def get_average_rating(technician_id):
     conn = get_connection()
-    result = conn.execute("SELECT AVG(score) FROM ratings WHERE technician_id=?", (technician_id,)).fetchone()[0]
+    result = conn.execute(
+        "SELECT AVG(score) FROM ratings WHERE technician_id=?", (technician_id,)
+    ).fetchone()[0]
     conn.close()
     return round(result, 1) if result else 0.0
 
@@ -344,13 +379,18 @@ def get_average_rating(technician_id):
 
 def save_image(request_id, file_path):
     conn = get_connection()
-    conn.execute("INSERT INTO images (request_id, file_path) VALUES (?,?)", (request_id, file_path))
+    conn.execute(
+        "INSERT INTO images (request_id, file_path) VALUES (?,?)",
+        (request_id, file_path)
+    )
     conn.commit()
     conn.close()
 
 def get_images_by_request(request_id):
     conn = get_connection()
-    images = conn.execute("SELECT * FROM images WHERE request_id=?", (request_id,)).fetchall()
+    images = conn.execute(
+        "SELECT * FROM images WHERE request_id=?", (request_id,)
+    ).fetchall()
     conn.close()
     return images
 
@@ -363,13 +403,24 @@ def seed_data():
     add_residence('Residence B')
     add_residence('Residence C')
     add_residence('Residence D')
-    create_user('admin1','admin@resifix.com',generate_password_hash('admin123'),'Admin User',None,'admin',residence='Residence A')
-    create_user('tech1','tech@resifix.com',generate_password_hash('tech123'),'John Technician',None,'technician',residence='Residence A',specialization='plumbing')
-    create_user('tech2','tech2@resifix.com',generate_password_hash('tech123'),'Sara Technician',None,'technician',residence='Residence A',specialization='electrical')
-    create_user('student1','student@resifix.com',generate_password_hash('student123'),'Jane Resident','A101','resident',residence='Residence A')
-    create_request(4,'A101','Plumbing','high','Leaking tap in bathroom','The tap has been leaking for 2 days',residence='Residence A')
-    create_request(4,'A101','Electrical','medium','Faulty light switch','Light switch in bedroom is not working',residence='Residence A')
+    create_user('admin1', 'admin@resifix.com', generate_password_hash('admin123'),
+                'Admin User', None, 'admin', residence='Residence A')
+    create_user('tech1', 'tech@resifix.com', generate_password_hash('tech123'),
+                'John Technician', None, 'technician',
+                residence='Residence A', specialization='plumbing')
+    create_user('tech2', 'tech2@resifix.com', generate_password_hash('tech123'),
+                'Sara Technician', None, 'technician',
+                residence='Residence A', specialization='electrical')
+    create_user('student1', 'student@resifix.com', generate_password_hash('student123'),
+                'Jane Resident', 'A101', 'resident', residence='Residence A')
+    create_request(4, 'A101', 'Plumbing', 'high',
+                   'Leaking tap in bathroom', 'The tap has been leaking for 2 days',
+                   residence='Residence A')
+    create_request(4, 'A101', 'Electrical', 'medium',
+                   'Faulty light switch', 'Light switch in bedroom is not working',
+                   residence='Residence A')
     print("Seed data inserted successfully.")
+
 
 if __name__ == '__main__':
     init_db()
