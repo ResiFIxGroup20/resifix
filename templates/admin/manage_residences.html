@@ -39,12 +39,7 @@
             style="font-size:12px; padding:4px 14px; border-radius:20px;">
           Active <span class="ms-1 small">{{ active_count }}</span>
          </a>
-         {% else %}
-          <a href="{{ url_for('admin.manage_residences') }}?status=active"
-            class="btn-ghost"
-            style="font-size:12px; padding:4px 14px; border-radius:20px;">
-            Active <span class="ms-1 small">{{ active_count }}</span>
-          </a>
+        
          {% endif %}
           <a href="{{ url_for('admin.manage_residences') }}?status=inactive"
              class="{% if status_filter == 'inactive' %}btn-primary{% else %}btn-ghost{% endif %}"
