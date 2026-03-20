@@ -16,7 +16,8 @@
   {% for val, label, count in tab_roles %}
   <li class="nav-item">
     <a class="nav-link {% if role_filter == val %}active{% endif %}"
-       href="{{ url_for('admin.manage_users') }}{% if val %}?role={{ val }}{% endif %}{% if search %}&search={{ search }}{% endif %}&page=1">
+     
+    href="{{ url_for('admin.manage_users') }}?{% if val %}role={{ val }}&{% endif %}{% if search %}search={{ search }}&{% endif %}page=1">
       {{ label }} <span class="badge bg-secondary ms-1">{{ count }}</span>
     </a>
   </li>
