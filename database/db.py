@@ -422,6 +422,7 @@ def seed_data():
     print("Seed data inserted successfully.")
 
 
+
 if __name__ == '__main__':
     init_db()
     seed_data()
