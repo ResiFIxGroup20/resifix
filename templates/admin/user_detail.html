@@ -204,15 +204,24 @@
         <span>Joined</span>
         <span>{{ user['created_at'][:10] if user['created_at'] else '—' }}</span>
       </div>
-      {% if user['role'] == 'technician' and user['specialization'] %}
+      
+
+{% endblock %}
+{% if user['role'] == 'technician' and user['specialization'] %}
       <div class="info-row">
         <span>Specialization</span>
         <span>{{ user['specialization']|title }}</span>
+      </div>
+      {% endif %}
+      {% if user['role'] == 'technician' %}
+      <div class="info-row">
+        <span>Rating</span>
+        <span style="font-weight:700; color:var(--accent);">
+          ⭐ {{ '%.1f'|format(avg_rating) if avg_rating else '0.0' }} / 5
+        </span>
       </div>
       {% endif %}
     </div>
 
   </div>
 </div>
-
-{% endblock %}

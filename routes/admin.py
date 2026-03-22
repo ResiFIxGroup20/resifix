@@ -21,6 +21,7 @@ from database.db import (
     add_residence,
     set_residence_active,
     update_profile,
+    get_average_rating,
 )
 from functools import wraps
 import math
@@ -247,7 +248,10 @@ def user_detail(user_id):
             flash(f"{full_name}'s details updated.", 'success')
             return redirect(url_for('admin.user_detail', user_id=user_id))
 
-    return render_template('admin/user_detail.html', user=user, residences=residences)
+    avg_rating = None
+    if user['role'] == 'technician':
+            avg_rating = get_average_rating(user['id']) or 0.0
+    return render_template('admin/user_detail.html', user=user, residences=residences, avg_rating=avg_rating)
 
 
 # ── Toggle User Active ─────────────────────────────────────────────────────
