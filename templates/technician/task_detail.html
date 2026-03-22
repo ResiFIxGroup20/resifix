@@ -68,8 +68,8 @@
         <div class="section-label-sm">Uploaded Photos</div>
         <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:8px;">
           {% for img in images %}
-          <a href="{{ url_for('static', filename=img['file_path']) }}" target="_blank">
-            <img src="{{ url_for('static', filename=img['file_path']) }}"
+          <a href="{{ img['file_path'] }}" target="_blank">
+              <img src="{{ img['file_path'] }}"
                  style="width:100px; height:80px; object-fit:cover; border-radius:6px; border:1px solid var(--border);">
           </a>
           {% endfor %}
@@ -242,6 +242,23 @@
       <div class="info-row"><span>Resolved</span><span>{{ task.resolved_at[:10] }}</span></div>
       {% endif %}
     </div>
+    {% if rating %}
+<div class="action-card" style="border-color:rgba(245,158,11,0.3); margin-top:12px;">
+    <div class="action-card-title">
+        <i class="bi bi-star-fill" style="color:#f59e0b;"></i> Resident Rating
+    </div>
+    <div style="font-size:24px; color:#f59e0b; margin-bottom:8px;">
+        {% for i in range(rating.score) %}&#9733;{% endfor %}
+        {% for i in range(5 - rating.score) %}&#9734;{% endfor %}
+    </div>
+    <div style="font-size:13px; color:var(--text-muted);">{{ rating.score }}/5 stars</div>
+    {% if rating.review %}
+    <div style="margin-top:10px; padding:10px; background:var(--bg-3); border-radius:6px; font-size:13px; color:var(--text); line-height:1.6;">
+        "{{ rating.review }}"
+    </div>
+    {% endif %}
+</div>
+{% endif %}
 
   </div>
 </div>

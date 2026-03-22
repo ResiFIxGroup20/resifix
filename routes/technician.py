@@ -87,12 +87,8 @@ def task_detail(request_id):
     tech_id = session['user_id']
     task    = get_request_by_id(request_id)
 
-    if not task:
+    if not task or task['technician_id'] != tech_id:
         flash('Task not found.', 'danger')
-        return redirect(url_for('technician.technician_dashboard'))
-
-    if task['technician_id'] != tech_id:
-        flash('You are not assigned to this task.', 'warning')
         return redirect(url_for('technician.technician_dashboard'))
 
     all_users = get_all_users()
@@ -130,10 +126,17 @@ def task_detail(request_id):
                 flash('Message sent to admin.', 'success')
             return redirect(url_for('technician.task_detail', request_id=request_id))
 
+    from database.db import get_connection
+    conn = get_connection()
+    rating = conn.execute(
+        "SELECT * FROM ratings WHERE request_id=?", (request_id,)
+    ).fetchone()
+    conn.close()
+
     return render_template('technician/task_detail.html',
                            task=task, user_map=user_map,
-                           comments=comments, images=images)
-
+                           comments=comments, images=images,
+                           rating=rating)
 
 # ── Profile ────────────────────────────────────────────────────────────────
 

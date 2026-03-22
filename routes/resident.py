@@ -1,4 +1,7 @@
 import os
+import cloudinary
+import cloudinary.uploader
+from dotenv import load_dotenv
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from werkzeug.utils import secure_filename
 from database.db import (
@@ -16,10 +19,17 @@ from database.db import (
     update_profile
 )
 
+load_dotenv()
+
+cloudinary.config(
+    cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME'),
+    api_key    = os.getenv('CLOUDINARY_API_KEY'),
+    api_secret = os.getenv('CLOUDINARY_API_SECRET')
+)
+
 resident = Blueprint('resident', __name__)
 
-UPLOAD_FOLDER      = os.path.join('static', 'uploads')
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif','webp'}
 
 
 def login_required(f):
@@ -88,17 +98,21 @@ def new_request():
             files = request.files.getlist('images')
             for file in files:
                 if file and file.filename and allowed_file(file.filename):
-                    filename = secure_filename(file.filename)
-                    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-                    file.save(os.path.join(UPLOAD_FOLDER, filename))
+                    upload_result = cloudinary.uploader.upload(
+                        file,
+                        folder='resifix/requests',
+                        resource_type='image'
+                    )
+                    image_url = upload_result.get('secure_url')
+
                     from database.db import get_connection
                     conn = get_connection()
-                    row  = conn.execute(
+                    row = conn.execute(
                         "SELECT id FROM maintenance_requests WHERE ticket_no=?", (ticket_no,)
                     ).fetchone()
                     conn.close()
                     if row:
-                        save_image(row['id'], 'uploads/' + filename)
+                        save_image(row['id'], image_url)
 
         flash(f'Request {ticket_no} submitted successfully!', 'success')
         return redirect(url_for('resident.dashboard'))
@@ -133,20 +147,29 @@ def view_request(request_id):
         })
 
     timeline = [
-        {'title': 'Request Submitted',   'done': True,                                         'date': req['submitted_at']},
-        {'title': 'Technician Assigned', 'done': req['technician_id'] is not None,             'date': req['updated_at'] if req['technician_id'] else None},
-        {'title': 'In Progress',         'done': req['status'] in ('in_progress','resolved'),  'date': req['updated_at'] if req['status'] in ('in_progress','resolved') else None},
-        {'title': 'Resolved',            'done': req['status'] == 'resolved',                  'date': req['resolved_at']},
+        {'title': 'Request Submitted',   'done': True,                                        'date': req['submitted_at']},
+        {'title': 'Technician Assigned', 'done': req['technician_id'] is not None,            'date': req['updated_at'] if req['technician_id'] else None},
+        {'title': 'In Progress',         'done': req['status'] in ('in_progress','resolved'), 'date': req['updated_at'] if req['status'] in ('in_progress','resolved') else None},
+        {'title': 'Resolved',            'done': req['status'] == 'resolved',                 'date': req['resolved_at']},
     ]
 
     images = get_images_by_request(request_id)
+
+    from database.db import get_connection
+    conn = get_connection()
+    existing_rating = conn.execute(
+        "SELECT * FROM ratings WHERE request_id=? AND resident_id=?",
+        (request_id, session['user_id'])
+    ).fetchone()
+    conn.close()
 
     return render_template('resident/view_request.html',
                            request=req,
                            technician=technician,
                            comments=comments,
                            timeline=timeline,
-                           images=images)
+                           images=images,
+                           existing_rating=existing_rating)
 
 
 # ── ADD COMMENT ────────────────────────────────────────────────────────────
@@ -234,3 +257,29 @@ def profile():
 
     return render_template('resident/profile.html',
                            user=user, stats=stats, residences=residences)
+
+@resident.route('/request/<int:request_id>/rate', methods=['POST'])
+@login_required
+def rate_request(request_id):
+    req = get_request_by_id(request_id)
+
+    if not req or req['resident_id'] != session['user_id']:
+        flash('Request not found.', 'danger')
+        return redirect(url_for('resident.dashboard'))
+
+    if req['status'] != 'resolved':
+        flash('You can only rate resolved requests.', 'warning')
+        return redirect(url_for('resident.view_request', request_id=request_id))
+
+    score  = request.form.get('score')
+    review = request.form.get('review', '').strip()
+
+    if not score:
+        flash('Please select a star rating.', 'warning')
+        return redirect(url_for('resident.view_request', request_id=request_id))
+
+    from database.db import create_rating
+    create_rating(request_id, session['user_id'], req['technician_id'], int(score), review)
+
+    flash('Thank you for your rating!', 'success')
+    return redirect(url_for('resident.view_request', request_id=request_id))                           

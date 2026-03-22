@@ -80,10 +80,7 @@
        class="nav-link {% if request.endpoint == 'resident.new_request' %}active{% endif %}">
       <i class="bi bi-plus-circle-fill"></i> New Request
     </a>
-    <a href="{{ url_for('resident.notifications') }}"
-       class="nav-link {% if request.endpoint == 'resident.notifications' %}active{% endif %}">
-      <i class="bi bi-bell-fill"></i> Notifications
-    </a>
+   
     <div class="nav-divider">Account</div>
     <a href="{{ url_for('resident.profile') }}"
        class="nav-link {% if request.endpoint == 'resident.profile' %}active{% endif %}">
