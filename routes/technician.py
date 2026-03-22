@@ -93,8 +93,26 @@ def task_detail(request_id):
 
     all_users = get_all_users()
     user_map  = {u['id']: u for u in all_users}
-    comments  = get_comments_by_request(request_id, staff_only=True)
     images    = get_images_by_request(request_id)
+
+    # Admin chat channel — is_internal=1 (admin + technician)
+    admin_comments = get_comments_by_request(request_id, staff_only=True)
+
+    # Direct channel — student ↔ technician (is_internal=2)
+    raw_direct = get_comments_by_request(request_id, direct_only=True)
+    direct_messages = []
+    for c in raw_direct:
+        author = get_user_by_id(c['author_id'])
+        direct_messages.append({
+            'author_name': author['full_name'] if author else 'Unknown',
+            'role':        author['role']      if author else '',
+            'body':        c['body'],
+            'created_at':  c['created_at'],
+            'is_mine':     c['author_id'] == tech_id,
+        })
+
+    # Work notes — is_internal=3 (technician private only)
+    work_notes = get_comments_by_request(request_id, notes_only=True)
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -109,21 +127,33 @@ def task_detail(request_id):
             return redirect(url_for('technician.task_detail', request_id=request_id))
 
         if action == 'add_note':
+            # Work note — is_internal=3 — technician private only
             body = request.form.get('note_body', '').strip()
             if not body:
                 flash('Note cannot be empty.', 'warning')
             else:
-                add_comment(request_id, tech_id, body, is_internal=True)
-                flash('Work note added.', 'success')
+                add_comment(request_id, tech_id, body, is_internal=3)
+                flash('Work note saved.', 'success')
             return redirect(url_for('technician.task_detail', request_id=request_id))
 
         if action == 'add_reply':
+            # Message to admin — is_internal=1 (staff chat)
             body = request.form.get('reply_body', '').strip()
             if not body:
                 flash('Message cannot be empty.', 'warning')
             else:
-                add_comment(request_id, tech_id, body, is_internal=True)
+                add_comment(request_id, tech_id, body, is_internal=1)
                 flash('Message sent to admin.', 'success')
+            return redirect(url_for('technician.task_detail', request_id=request_id))
+
+        if action == 'message_student':
+            # Direct message to student — is_internal=2
+            body = request.form.get('student_message', '').strip()
+            if not body:
+                flash('Message cannot be empty.', 'warning')
+            else:
+                add_comment(request_id, tech_id, body, is_internal=2)
+                flash('Message sent to student.', 'success')
             return redirect(url_for('technician.task_detail', request_id=request_id))
 
     from database.db import get_connection
@@ -135,15 +165,18 @@ def task_detail(request_id):
 
     return render_template('technician/task_detail.html',
                            task=task, user_map=user_map,
-                           comments=comments, images=images,
+                           admin_comments=admin_comments,
+                           direct_messages=direct_messages,
+                           work_notes=work_notes,
+                           images=images,
                            rating=rating)
+
 
 # ── Profile ────────────────────────────────────────────────────────────────
 
 @technician.route('/technician/profile', methods=['GET', 'POST'])
 @technician_required
 def profile():
-    """Technician profile — edit name, email and residence."""
     tech_id    = session['user_id']
     user       = get_user_by_id(tech_id)
     residences = get_all_residences()
@@ -177,7 +210,6 @@ def profile():
         update_profile(tech_id, full_name, email, residence=residence)
         session['full_name'] = full_name
         session['residence'] = residence
-
         flash('Profile updated successfully.', 'success')
         return redirect(url_for('technician.profile'))
 

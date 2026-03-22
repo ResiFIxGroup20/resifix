@@ -23,6 +23,13 @@
           {% else %}badge-closed{% endif %}">
           {{ s|replace('_',' ')|title }}
         </span>
+        {% if request.is_worsening %}
+        <span style="background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3);
+                     color:var(--danger); border-radius:20px; padding:3px 10px;
+                     font-size:11px; font-weight:700;">
+          <i class="bi bi-arrow-up-right-circle-fill"></i> Worsening
+        </span>
+        {% endif %}
       </div>
     </div>
 
@@ -69,91 +76,226 @@
     {% if images %}
     <div style="margin-top:24px;">
       <div class="section-label-sm">Uploaded Images</div>
-      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:12px; margin-top:10px;">
+      <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+                  gap:12px; margin-top:10px;">
         {% for img in images %}
         <a href="{{ img['file_path'] }}" target="_blank">
-    <img src="{{ img['file_path'] }}"
-               style="width:100%; height:120px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--border);">
+          <img src="{{ img['file_path'] }}"
+               style="width:100%; height:120px; object-fit:cover;
+                      border-radius:var(--radius-sm); border:1px solid var(--border);">
         </a>
-        {% endfor %} 
+        {% endfor %}
       </div>
     </div>
     {% endif %}
 
-    <!-- Comments -->
-    <div class="comments-section">
-      <div class="section-label-sm">Comments & Updates</div>
-
-      <div class="comments-list">
-        {% if comments %}
-          {% for comment in comments %}
-          <div class="comment-item">
-            <div class="comment-avatar">{{ comment.author_name[0] if comment.author_name else '?' }}</div>
-            <div class="comment-body">
-              <div class="comment-meta">
-                <span class="comment-author">{{ comment.author_name }}</span>
-                {% if comment.role %}<span class="comment-role">{{ comment.role|title }}</span>{% endif %}
-                <span class="comment-date">{{ comment.created_at[:16] }}</span>
-              </div>
-              <div class="comment-text">{{ comment.body }}</div>
-            </div>
-          </div>
-          {% endfor %}
-        {% else %}
-        <p class="text-muted" style="text-align:center; padding:20px;">No comments yet</p>
-        {% endif %}
+    <!-- ── Chat Section ───────────────────────────────────────────────── -->
+    <div class="card-panel" style="margin-top:24px;">
+      <div class="panel-header">
+        <div class="panel-title"><i class="bi bi-chat-left-text-fill"></i> Messages</div>
       </div>
 
-      <!-- Comment form with voice + clear -->
-      {% if request.status != 'resolved' %}
-      <form method="POST" action="{{ url_for('resident.add_request_comment', request_id=request.id) }}"
-            class="comment-form" style="margin-top:16px;">
+      <!-- Tab switcher -->
+      <div style="display:flex; gap:8px; padding:14px 16px 0;">
+        <button type="button" id="tabAdmin" onclick="switchChatTab('admin')"
+                style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--accent);
+                  background:var(--accent-dim); color:var(--primary); font-size:12px;
+                  font-weight:600; cursor:pointer; font-family:var(--font);">
+          💬 Admin Updates
+        </button>
+        <button type="button" id="tabTech" onclick="switchChatTab('tech')"
+                style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--border-strong);
+                  background:var(--bg-3); color:var(--text-muted); font-size:12px;
+                  font-weight:600; cursor:pointer; font-family:var(--font);">
+          🔧 Technician Chat
+          {% if direct_messages|length > 0 %}
+          <span style="background:var(--accent); color:#fff; border-radius:10px;
+            padding:1px 6px; font-size:10px; margin-left:4px;">{{ direct_messages|length }}</span>
+          {% endif %}
+        </button>
+      </div>
 
-        <!-- Toolbar row -->
-        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
-          <span style="font-size:11px; color:var(--text-faint);">
-            <i class="bi bi-info-circle"></i> Visible to you and the admin
-          </span>
-          <div style="display:flex; gap:6px;">
-            <!-- Clear button -->
-            <button type="button" id="clearComment" title="Clear"
-                    style="display:none; align-items:center; gap:5px;
-                      background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
-                      border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
-                      color:var(--danger); cursor:pointer; font-family:var(--font);">
+      <!-- Admin Updates tab -->
+      <div id="panelAdmin">
+        <div style="padding:16px; display:flex; flex-direction:column; gap:12px; min-height:80px;">
+          {% if comments %}
+            {% for comment in comments %}
+            <div style="display:flex; gap:10px;
+              justify-content:{% if comment.role == 'admin' %}flex-start{% else %}flex-end{% endif %};">
+              {% if comment.role != 'resident' %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:var(--accent-dim); color:var(--accent);
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ comment.author_name[0] if comment.author_name else '?' }}
+              </div>
+              {% endif %}
+              <div style="max-width:80%;
+                background:{% if comment.role == 'resident' %}var(--accent){% else %}var(--bg-3){% endif %};
+                color:{% if comment.role == 'resident' %}#fff{% else %}var(--text){% endif %};
+                border:1px solid var(--border); border-radius:10px;
+                {% if comment.role == 'resident' %}border-bottom-right-radius:3px;{% else %}border-bottom-left-radius:3px;{% endif %}
+                padding:10px 14px;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
+                  <span style="font-weight:600; font-size:12px;">{{ comment.author_name }}</span>
+                  <span style="font-size:10px; opacity:0.6;">{{ comment.role|title }}</span>
+                  <span style="font-size:10px; opacity:0.5; margin-left:auto;">{{ comment.created_at[:16] }}</span>
+                </div>
+                <div style="font-size:13.5px; line-height:1.55;">{{ comment.body }}</div>
+              </div>
+              {% if comment.role == 'resident' %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:var(--bg-3); color:var(--text-muted);
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ comment.author_name[0] if comment.author_name else '?' }}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% else %}
+          <div style="text-align:center; padding:20px; color:var(--text-faint); font-size:13px;">
+            <i class="bi bi-chat-left" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+            No messages yet
+          </div>
+          {% endif %}
+        </div>
+
+        {% if request.status not in ('resolved', 'closed', 'cancelled') %}
+        <div style="padding:12px 16px; border-top:1px solid var(--border);">
+          <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+            <span style="font-size:10px; color:var(--text-faint); margin-right:auto;">
+              <i class="bi bi-info-circle"></i> Visible to you and admin
+            </span>
+            <button type="button" id="clearComment" style="display:none; align-items:center; gap:5px;
+              background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+              border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+              color:var(--danger); cursor:pointer; font-family:var(--font);">
               <i class="bi bi-x-circle-fill"></i> Clear
             </button>
-            <!-- Mic button -->
-            <button type="button" id="micComment" title="Speak your comment"
-                    style="display:flex; align-items:center; gap:5px;
-                      background:var(--bg-3); border:1px solid var(--border-strong);
-                      border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
-                      color:var(--text-muted); cursor:pointer; font-family:var(--font);">
+            <button type="button" id="micComment" style="display:flex; align-items:center; gap:5px;
+              background:var(--bg-3); border:1px solid var(--border-strong);
+              border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+              color:var(--text-muted); cursor:pointer; font-family:var(--font);">
               <i class="bi bi-mic-fill" id="micCommentIcon"></i>
               <span id="micCommentLabel">Speak</span>
             </button>
           </div>
+          <div id="speechStatusComment" style="display:none; align-items:center; gap:8px;
+            background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);
+            border-radius:6px; padding:7px 12px; font-size:12px; color:var(--primary); margin-bottom:6px;">
+            <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
+              display:inline-block; animation:pulse 1s infinite;"></span>
+            <span>Listening… click Stop when done.</span>
+          </div>
+          <form method="POST" action="{{ url_for('resident.add_request_comment', request_id=request.id) }}">
+            <textarea name="comment" id="commentField" class="form-textarea-custom"
+                      placeholder="Message admin about your request…" rows="2" required></textarea>
+            <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+              <button type="submit" class="btn-ghost">
+                <i class="bi bi-send"></i> Send
+              </button>
+            </div>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Technician Direct Chat tab -->
+      <div id="panelTech" style="display:none;">
+
+        {% if not request.technician_id %}
+        <div style="text-align:center; padding:32px; color:var(--text-faint);">
+          <i class="bi bi-person-gear" style="font-size:32px; display:block; margin-bottom:10px;"></i>
+          <p style="font-size:13px;">No technician assigned yet.<br>This chat is available once a technician is assigned.</p>
+        </div>
+        {% else %}
+
+        <div style="padding:16px; display:flex; flex-direction:column; gap:12px; min-height:80px;">
+          {% if direct_messages %}
+            {% for msg in direct_messages %}
+            <div style="display:flex; gap:10px;
+              justify-content:{% if msg.is_mine %}flex-end{% else %}flex-start{% endif %};">
+              {% if not msg.is_mine %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:rgba(124,58,237,0.15); color:#7c3aed;
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ msg.author_name[0] if msg.author_name else '?' }}
+              </div>
+              {% endif %}
+              <div style="max-width:80%;
+                background:{% if msg.is_mine %}var(--accent){% else %}var(--bg-3){% endif %};
+                color:{% if msg.is_mine %}#fff{% else %}var(--text){% endif %};
+                border:1px solid {% if msg.is_mine %}transparent{% else %}var(--border){% endif %};
+                border-radius:10px;
+                {% if msg.is_mine %}border-bottom-right-radius:3px;{% else %}border-bottom-left-radius:3px;{% endif %}
+                padding:10px 14px;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
+                  <span style="font-weight:600; font-size:12px;">{{ msg.author_name }}</span>
+                  <span style="font-size:10px; opacity:0.6;">{{ msg.role|title }}</span>
+                  <span style="font-size:10px; opacity:0.5; margin-left:auto;">{{ msg.created_at[:16] }}</span>
+                </div>
+                <div style="font-size:13.5px; line-height:1.55;">{{ msg.body }}</div>
+              </div>
+              {% if msg.is_mine %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:var(--accent-dim); color:var(--accent);
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ msg.author_name[0] if msg.author_name else '?' }}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% else %}
+          <div style="text-align:center; padding:20px; color:var(--text-faint); font-size:13px;">
+            <i class="bi bi-chat-heart" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+            Start a conversation with your technician
+          </div>
+          {% endif %}
         </div>
 
-        <!-- Listening indicator -->
-        <div id="speechStatusComment" style="display:none; align-items:center; gap:8px;
-          background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);
-          border-radius:6px; padding:7px 12px; font-size:12px; color:var(--primary); margin-bottom:6px;">
-          <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
-            display:inline-block; animation:pulse 1s infinite;"></span>
-          <span>Listening… click Stop when done.</span>
+        {% if request.status not in ('resolved', 'closed', 'cancelled') %}
+        <div style="padding:12px 16px; border-top:1px solid var(--border);">
+          <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+            <span style="font-size:10px; color:var(--text-faint); margin-right:auto;">
+              <i class="bi bi-shield-lock"></i> Only you and the technician see this
+            </span>
+            <button type="button" id="clearDirect" style="display:none; align-items:center; gap:5px;
+              background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+              border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+              color:var(--danger); cursor:pointer; font-family:var(--font);">
+              <i class="bi bi-x-circle-fill"></i> Clear
+            </button>
+            <button type="button" id="micDirect" style="display:flex; align-items:center; gap:5px;
+              background:var(--bg-3); border:1px solid var(--border-strong);
+              border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+              color:var(--text-muted); cursor:pointer; font-family:var(--font);">
+              <i class="bi bi-mic-fill" id="micDirectIcon"></i>
+              <span id="micDirectLabel">Speak</span>
+            </button>
+          </div>
+          <div id="speechStatusDirect" style="display:none; align-items:center; gap:8px;
+            background:rgba(124,58,237,0.08); border:1px solid rgba(124,58,237,0.2);
+            border-radius:6px; padding:7px 12px; font-size:12px; color:#7c3aed; margin-bottom:6px;">
+            <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
+              display:inline-block; animation:pulse 1s infinite;"></span>
+            <span>Listening… click Stop when done.</span>
+          </div>
+          <form method="POST" action="{{ url_for('resident.direct_message_technician', request_id=request.id) }}">
+            <textarea name="direct_message" id="directField" class="form-textarea-custom"
+                      placeholder="Message your technician directly…" rows="2" required></textarea>
+            <div style="display:flex; justify-content:flex-end; margin-top:8px;">
+              <button type="submit" style="display:flex; align-items:center; gap:6px;
+                background:linear-gradient(135deg,var(--accent),#7c3aed); color:#fff;
+                border:none; border-radius:8px; padding:8px 16px; font-size:13px;
+                font-weight:600; cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-send-fill"></i> Send to Technician
+              </button>
+            </div>
+          </form>
         </div>
+        {% endif %}
 
-        <textarea name="comment" id="commentField" class="form-textarea-custom"
-                  placeholder="Add a comment or update..." rows="3" required></textarea>
-
-        <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-          <button type="submit" class="btn-ghost">
-            <i class="bi bi-send"></i> Send Message
-          </button>
-        </div>
-      </form>
-      {% endif %}
+        {% endif %}
+      </div>
     </div>
 
   </div>
@@ -167,10 +309,31 @@
         <a href="{{ url_for('resident.dashboard') }}" class="btn-ghost w-100">
           <i class="bi bi-arrow-left"></i> Back to Dashboard
         </a>
-        {% if request.status == 'resolved' %}
-        <button class="btn-primary w-100" onclick="alert('Rating feature coming soon!')">
-          <i class="bi bi-star"></i> Rate Technician
-        </button>
+
+        <!-- Worsening toggle — only for open requests -->
+        {% if request.status not in ('resolved', 'closed', 'cancelled') %}
+        <form method="POST"
+              action="{{ url_for('resident.toggle_worsening', request_id=request.id) }}">
+          {% if request.is_worsening %}
+          <button type="submit" class="w-100"
+                  style="display:flex; align-items:center; justify-content:center; gap:6px;
+                         background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3);
+                         color:var(--danger); border-radius:8px; padding:8px 14px;
+                         font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font);
+                         width:100%;">
+            <i class="bi bi-arrow-down-circle"></i> Remove Worsening Flag
+          </button>
+          {% else %}
+          <button type="submit" class="w-100"
+                  style="display:flex; align-items:center; justify-content:center; gap:6px;
+                         background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.3);
+                         color:var(--warning); border-radius:8px; padding:8px 14px;
+                         font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font);
+                         width:100%;">
+            <i class="bi bi-arrow-up-right-circle"></i> Flag as Worsening
+          </button>
+          {% endif %}
+        </form>
         {% endif %}
       </div>
     </div>
@@ -200,145 +363,133 @@
       </div>
     </div>
     {% endif %}
-{% if request.status == 'resolved' %}
-<div class="action-card" style="border-color:rgba(34,197,94,0.3); margin-top:12px;">
-    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+
+    {% if request.status == 'resolved' %}
+    <div class="action-card" style="border-color:rgba(34,197,94,0.3);">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
         <i class="bi bi-star-fill" style="font-size:24px; color:#f59e0b;"></i>
         <div>
-            <strong>Rate your experience</strong>
-            <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">
-                How was the service by the technician?
-            </p>
+          <strong>Rate your experience</strong>
+          <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">How was the service?</p>
         </div>
-    </div>
+      </div>
 
-    {% if not existing_rating %}
-    <form method="POST" action="{{ url_for('resident.rate_request', request_id=request.id) }}">
-        <div style="display:flex; gap:8px; margin-bottom:12px; font-size:28px;">
-            {% for i in range(1, 6) %}
-            <label style="cursor:pointer;">
-                <input type="radio" name="score" value="{{ i }}" style="display:none;" required>
-                <span class="star-btn" data-value="{{ i }}" style="color:#d1d5db; transition:color 0.15s;">&#9733;</span>
-            </label>
-            {% endfor %}
+      {% if not existing_rating %}
+      <form method="POST" action="{{ url_for('resident.rate_request', request_id=request.id) }}">
+        <div style="display:flex; gap:8px; margin-bottom:12px; font-size:28px;" id="starRow">
+          {% for i in range(1, 6) %}
+          <label style="cursor:pointer;">
+            <input type="radio" name="score" value="{{ i }}" style="display:none;" required>
+            <span class="star-btn" data-value="{{ i }}" style="color:#d1d5db; transition:color 0.15s;">&#9733;</span>
+          </label>
+          {% endfor %}
         </div>
-        <textarea name="review" placeholder="Leave a comment (optional)" 
-                  style="width:100%; padding:8px; border-radius:6px; border:1px solid var(--border); background:var(--bg-3); color:var(--text); font-size:13px; resize:vertical; min-height:70px;"></textarea>
-        <button type="submit" style="margin-top:10px; width:100%; padding:10px; background:var(--accent); color:white; border:none; border-radius:6px; font-weight:600; cursor:pointer;">
-            <i class="bi bi-star-fill"></i> Submit Rating
+        <textarea name="review" placeholder="Leave a comment (optional)"
+                  style="width:100%; padding:8px; border-radius:6px;
+                         border:1px solid var(--border); background:var(--bg-3);
+                         color:var(--text); font-size:13px; resize:vertical; min-height:70px;">
+        </textarea>
+        <button type="submit" style="margin-top:10px; width:100%; padding:10px;
+          background:var(--accent); color:white; border:none; border-radius:6px;
+          font-weight:600; cursor:pointer;">
+          <i class="bi bi-star-fill"></i> Submit Rating
         </button>
-    </form>
-
-    <script>
-    const stars = document.querySelectorAll('.star-btn');
-    stars.forEach(star => {
-        star.addEventListener('mouseover', function() {
-            const val = parseInt(this.dataset.value);
-            stars.forEach(s => s.style.color = parseInt(s.dataset.value) <= val ? '#f59e0b' : '#d1d5db');
-        });
-        star.addEventListener('click', function() {
-            const val = parseInt(this.dataset.value);
-            this.closest('label').querySelector('input').checked = true;
-            stars.forEach(s => s.style.color = parseInt(s.dataset.value) <= val ? '#f59e0b' : '#d1d5db');
-        });
-    });
-    </script>
-
-    {% else %}
-    <div style="text-align:center; padding:12px;">
+      </form>
+      {% else %}
+      <div style="text-align:center; padding:12px;">
         <div style="font-size:24px; color:#f59e0b;">
-            {% for i in range(existing_rating.score) %}&#9733;{% endfor %}
+          {% for i in range(existing_rating.score) %}&#9733;{% endfor %}
+          {% for i in range(5 - existing_rating.score) %}&#9734;{% endfor %}
         </div>
-        <p style="font-size:13px; color:var(--text-muted); margin-top:6px;">You already rated this request</p>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:6px;">
+          You already rated this request
+        </p>
+      </div>
+      {% endif %}
     </div>
     {% endif %}
-</div>
-{% endif %}
+
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-// Reusable speech-to-text setup
-function setupVoiceInput(textareaId, micBtnId, micIconId, micLabelId, clearBtnId, statusId) {
-    const field     = document.getElementById(textareaId);
-    const micBtn    = document.getElementById(micBtnId);
-    const micIcon   = document.getElementById(micIconId);
-    const micLabel  = document.getElementById(micLabelId);
-    const clearBtn  = document.getElementById(clearBtnId);
-    const statusDiv = document.getElementById(statusId);
+// ── Tab switcher ──────────────────────────────────────────────────────────
+function switchChatTab(tab) {
+    const aP = document.getElementById('panelAdmin'),
+          tP = document.getElementById('panelTech'),
+          aT = document.getElementById('tabAdmin'),
+          tT = document.getElementById('tabTech');
 
-    if (!field || !micBtn) return;
-
-    // Clear button visibility
-    function updateClear() {
-        clearBtn.style.display = field.value.trim() ? 'flex' : 'none';
+    if (tab === 'admin') {
+        aP.style.display='block'; tP.style.display='none';
+        aT.style.background='var(--accent-dim)'; aT.style.borderColor='var(--accent)'; aT.style.color='var(--primary)';
+        tT.style.background='var(--bg-3)';       tT.style.borderColor='var(--border-strong)'; tT.style.color='var(--text-muted)';
+    } else {
+        tP.style.display='block'; aP.style.display='none';
+        tT.style.background='rgba(124,58,237,0.1)'; tT.style.borderColor='rgba(124,58,237,0.3)'; tT.style.color='#7c3aed';
+        aT.style.background='var(--bg-3)';          aT.style.borderColor='var(--border-strong)'; aT.style.color='var(--text-muted)';
     }
-    field.addEventListener('input', updateClear);
-    clearBtn.addEventListener('click', () => { field.value = ''; updateClear(); field.focus(); });
-
-    // Speech recognition
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { micBtn.style.display = 'none'; return; }
-
-    const rec = new SR();
-    rec.lang = 'en-ZA';
-    rec.continuous = true;
-    rec.interimResults = true;
-
-    let listening = false;
-    let saved = '';
-
-    rec.onstart = () => {
-        listening = true;
-        saved = field.value;
-        micBtn.style.background   = 'rgba(239,68,68,0.12)';
-        micBtn.style.borderColor  = 'rgba(239,68,68,0.4)';
-        micBtn.style.color        = 'var(--danger)';
-        micIcon.className         = 'bi bi-stop-circle-fill';
-        micLabel.textContent      = 'Stop';
-        statusDiv.style.display   = 'flex';
-    };
-
-    rec.onresult = (e) => {
-        let interim = '', final = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-            const t = e.results[i][0].transcript;
-            if (e.results[i].isFinal) final += t + ' ';
-            else interim += t;
-        }
-        field.value = saved + final + interim;
-        if (final) saved = saved + final;
-        updateClear();
-    };
-
-    rec.onerror = (e) => {
-        if (e.error === 'not-allowed')
-            alert('Microphone access denied. Please allow microphone access and try again.');
-        stop();
-    };
-
-    rec.onend = () => { if (listening) rec.start(); };
-
-    function stop() {
-        listening = false;
-        rec.stop();
-        micBtn.style.background  = '';
-        micBtn.style.borderColor = '';
-        micBtn.style.color       = '';
-        micIcon.className        = 'bi bi-mic-fill';
-        micLabel.textContent     = 'Speak';
-        statusDiv.style.display  = 'none';
-    }
-
-    micBtn.addEventListener('click', () => {
-        if (!listening) rec.start(); else stop();
-    });
 }
 
-// Init for comment field
+// ── Voice input ───────────────────────────────────────────────────────────
+function setupVoiceInput(textareaId, micBtnId, micIconId, micLabelId, clearBtnId, statusId) {
+    const field=document.getElementById(textareaId), micBtn=document.getElementById(micBtnId),
+          micIcon=document.getElementById(micIconId), micLabel=document.getElementById(micLabelId),
+          clearBtn=document.getElementById(clearBtnId), statusDiv=document.getElementById(statusId);
+    if (!field || !micBtn) return;
+
+    function updateClear() { clearBtn.style.display = field.value.trim() ? 'flex' : 'none'; }
+    field.addEventListener('input', updateClear);
+    clearBtn.addEventListener('click', () => { field.value=''; updateClear(); field.focus(); });
+
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { micBtn.style.display='none'; return; }
+
+    const rec = new SR();
+    rec.lang='en-ZA'; rec.continuous=true; rec.interimResults=true;
+    let listening=false, saved='';
+
+    rec.onstart  = () => { listening=true; saved=field.value;
+        micBtn.style.background='rgba(239,68,68,0.12)'; micBtn.style.borderColor='rgba(239,68,68,0.4)'; micBtn.style.color='var(--danger)';
+        micIcon.className='bi bi-stop-circle-fill'; micLabel.textContent='Stop'; statusDiv.style.display='flex'; };
+    rec.onresult = e => { let int='',fin='';
+        for(let i=e.resultIndex;i<e.results.length;i++){
+            const t=e.results[i][0].transcript;
+            if(e.results[i].isFinal) fin+=t+' '; else int+=t;
+        }
+        field.value=saved+fin+int; if(fin) saved=saved+fin; updateClear(); };
+    rec.onerror  = e => { if(e.error==='not-allowed') alert('Microphone access denied.'); stop(); };
+    rec.onend    = () => { if(listening) rec.start(); };
+    function stop() { listening=false; rec.stop();
+        micBtn.style.background=''; micBtn.style.borderColor=''; micBtn.style.color='';
+        micIcon.className='bi bi-mic-fill'; micLabel.textContent='Speak'; statusDiv.style.display='none'; }
+    micBtn.addEventListener('click', () => { if(!listening) rec.start(); else stop(); });
+}
+
 setupVoiceInput('commentField','micComment','micCommentIcon','micCommentLabel','clearComment','speechStatusComment');
+setupVoiceInput('directField', 'micDirect', 'micDirectIcon', 'micDirectLabel', 'clearDirect', 'speechStatusDirect');
+
+// ── Star rating — hover highlights + mouseout reset ───────────────────────
+const stars = document.querySelectorAll('.star-btn');
+let selectedVal = 0;
+
+stars.forEach(star => {
+    star.addEventListener('mouseover', function() {
+        const val = parseInt(this.dataset.value);
+        stars.forEach(s => s.style.color = parseInt(s.dataset.value) <= val ? '#f59e0b' : '#d1d5db');
+    });
+    star.addEventListener('mouseout', function() {
+        // Reset to selected value, or all grey if nothing selected
+        stars.forEach(s => s.style.color = parseInt(s.dataset.value) <= selectedVal ? '#f59e0b' : '#d1d5db');
+    });
+    star.addEventListener('click', function() {
+        selectedVal = parseInt(this.dataset.value);
+        this.closest('label').querySelector('input').checked = true;
+        stars.forEach(s => s.style.color = parseInt(s.dataset.value) <= selectedVal ? '#f59e0b' : '#d1d5db');
+    });
+});
 </script>
 
 <style>

@@ -67,148 +67,217 @@
       {% endif %}
     </div>
 
-    <!-- Conversation -->
+    <!-- ── Chat Section ───────────────────────────────────────────────── -->
     <div class="card-panel">
       <div class="panel-header">
-        <div class="panel-title"><i class="bi bi-chat-left-text-fill"></i> Conversation</div>
-        <span style="font-size:12px; color:var(--text-muted);">{{ comments|length }} message{{ 's' if comments|length != 1 }}</span>
+        <div class="panel-title"><i class="bi bi-chat-left-text-fill"></i> Messages</div>
       </div>
 
-      {% if comments %}
-      <div style="padding:16px; display:flex; flex-direction:column; gap:12px; max-height:440px; overflow-y:auto;">
-        {% for c in comments %}
-        {% set author = user_map.get(c['author_id']) %}
-        {% if c['is_internal'] %}
-        <div style="display:flex; gap:10px;">
-          <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
-            background:rgba(245,158,11,0.15); color:#f59e0b;
-            display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
-            {{ author['full_name'][0].upper() if author else '?' }}
-          </div>
-          <div style="flex:1; background:rgba(245,158,11,0.05); border:1px solid rgba(245,158,11,0.2); border-radius:8px; padding:10px 14px;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px; flex-wrap:wrap;">
-              <span style="font-weight:600; font-size:13px;">{{ author['full_name'] if author else 'Staff' }}</span>
-              <span style="font-size:11px; color:var(--text-faint);">{{ author['role']|title if author else '' }}</span>
-              <span style="font-size:10px; background:rgba(245,158,11,0.15); color:#f59e0b; padding:2px 7px; border-radius:10px; font-weight:600;">🔒 Staff Only</span>
-              <span style="font-size:11px; color:var(--text-faint); margin-left:auto;">{{ c['created_at'][:16] if c['created_at'] else '' }}</span>
-            </div>
-            <div style="font-size:13.5px; line-height:1.6;">{{ c['body'] }}</div>
-          </div>
-        </div>
-        {% else %}
-        <div style="display:flex; gap:10px;">
-          <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
-            background:{% if author and author['role'] == 'admin' %}var(--accent-dim){% else %}var(--bg-3){% endif %};
-            color:{% if author and author['role'] == 'admin' %}var(--accent){% else %}var(--text-muted){% endif %};
-            display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
-            {{ author['full_name'][0].upper() if author else '?' }}
-          </div>
-          <div style="flex:1; background:var(--bg-3); border:1px solid var(--border); border-radius:8px; padding:10px 14px;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px; flex-wrap:wrap;">
-              <span style="font-weight:600; font-size:13px;">{{ author['full_name'] if author else 'Unknown' }}</span>
-              <span style="font-size:11px; color:var(--text-faint);">{{ author['role']|title if author else '' }}</span>
-              {% if author and author['role'] == 'admin' %}
-              <span style="font-size:10px; background:var(--accent-dim); color:var(--primary); padding:2px 7px; border-radius:10px; font-weight:600;">💬 Student Reply</span>
+      <!-- Tab switcher -->
+      <div style="display:flex; gap:8px; padding:14px 16px 0;">
+        <button type="button" id="tabStudent" onclick="switchTab('student')"
+                style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--accent);
+                  background:var(--accent-dim); color:var(--primary); font-size:12px;
+                  font-weight:600; cursor:pointer; font-family:var(--font);">
+          🎓 Student Chat
+          {% if student_comments|length > 0 %}
+          <span style="background:var(--accent); color:#fff; border-radius:10px;
+            padding:1px 6px; font-size:10px; margin-left:4px;">{{ student_comments|length }}</span>
+          {% endif %}
+        </button>
+        <button type="button" id="tabTech" onclick="switchTab('tech')"
+                style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--border-strong);
+                  background:var(--bg-3); color:var(--text-muted); font-size:12px;
+                  font-weight:600; cursor:pointer; font-family:var(--font);">
+          🔧 Technician Chat
+          {% if tech_comments|length > 0 %}
+          <span style="background:var(--text-muted); color:var(--bg); border-radius:10px;
+            padding:1px 6px; font-size:10px; margin-left:4px;">{{ tech_comments|length }}</span>
+          {% endif %}
+        </button>
+      </div>
+
+      <!-- ── Student Chat tab ──────────────────────────────────────────── -->
+      <div id="panelStudent">
+
+        <div style="padding:16px; display:flex; flex-direction:column; gap:12px; min-height:80px;">
+          {% if student_comments %}
+            {% for c in student_comments %}
+            {% set author = user_map.get(c['author_id']) %}
+            <div style="display:flex; gap:10px;
+              justify-content:{% if author and author['role'] == 'admin' %}flex-end{% else %}flex-start{% endif %};">
+              {% if not (author and author['role'] == 'admin') %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:var(--bg-3); color:var(--text-muted);
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ author['full_name'][0].upper() if author else '?' }}
+              </div>
               {% endif %}
-              <span style="font-size:11px; color:var(--text-faint); margin-left:auto;">{{ c['created_at'][:16] if c['created_at'] else '' }}</span>
+              <div style="max-width:80%;
+                background:{% if author and author['role'] == 'admin' %}var(--accent){% else %}var(--bg-3){% endif %};
+                color:{% if author and author['role'] == 'admin' %}#fff{% else %}var(--text){% endif %};
+                border:1px solid {% if author and author['role'] == 'admin' %}transparent{% else %}var(--border){% endif %};
+                border-radius:10px;
+                {% if author and author['role'] == 'admin' %}border-bottom-right-radius:3px;{% else %}border-bottom-left-radius:3px;{% endif %}
+                padding:10px 14px;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
+                  <span style="font-weight:600; font-size:12px;">{{ author['full_name'] if author else 'Unknown' }}</span>
+                  <span style="font-size:10px; opacity:0.6;">{{ author['role']|title if author else '' }}</span>
+                  <span style="font-size:10px; opacity:0.5; margin-left:auto;">{{ c['created_at'][:16] if c['created_at'] else '' }}</span>
+                </div>
+                <div style="font-size:13.5px; line-height:1.55;">{{ c['body'] }}</div>
+              </div>
+              {% if author and author['role'] == 'admin' %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:var(--accent-dim); color:var(--accent);
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ author['full_name'][0].upper() if author else 'A' }}
+              </div>
+              {% endif %}
             </div>
-            <div style="font-size:13.5px; line-height:1.6;">{{ c['body'] }}</div>
+            {% endfor %}
+          {% else %}
+          <div style="text-align:center; padding:20px; color:var(--text-faint); font-size:13px;">
+            <i class="bi bi-chat-left" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+            No messages with student yet
           </div>
-        </div>
-        {% endif %}
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="empty-state" style="padding:32px;">
-        <div class="empty-icon"><i class="bi bi-chat-left"></i></div>
-        <div class="empty-sub">No messages yet</div>
-      </div>
-      {% endif %}
-
-      <!-- Tab switcher + forms -->
-      <div style="padding:16px; border-top:1px solid var(--border);">
-        <div style="display:flex; gap:8px; margin-bottom:14px;">
-          <button type="button" id="tabPublic" onclick="switchTab('public')"
-                  style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--accent);
-                    background:var(--accent-dim); color:var(--primary); font-size:12px;
-                    font-weight:600; cursor:pointer; font-family:var(--font);">
-            💬 Reply to Student
-          </button>
-          <button type="button" id="tabInternal" onclick="switchTab('internal')"
-                  style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--border-strong);
-                    background:var(--bg-3); color:var(--text-muted); font-size:12px;
-                    font-weight:600; cursor:pointer; font-family:var(--font);">
-            🔒 Staff Note
-          </button>
+          {% endif %}
         </div>
 
-        <!-- Reply to student form -->
-        <div id="formPublic">
+        <div style="padding:12px 16px; border-top:1px solid var(--border);">
+          <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+            <span style="font-size:10px; color:var(--text-faint); margin-right:auto;">
+              <i class="bi bi-info-circle"></i> Visible to student and admin
+            </span>
+            <button type="button" id="clearReply" style="display:none; align-items:center; gap:5px;
+              background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+              border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+              color:var(--danger); cursor:pointer; font-family:var(--font);">
+              <i class="bi bi-x-circle-fill"></i> Clear
+            </button>
+            <button type="button" id="micReply" style="display:flex; align-items:center; gap:5px;
+              background:var(--bg-3); border:1px solid var(--border-strong);
+              border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+              color:var(--text-muted); cursor:pointer; font-family:var(--font);">
+              <i class="bi bi-mic-fill" id="micReplyIcon"></i>
+              <span id="micReplyLabel">Speak</span>
+            </button>
+          </div>
+          <div id="speechStatusReply" style="display:none; align-items:center; gap:8px;
+            background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);
+            border-radius:6px; padding:7px 12px; font-size:12px; color:var(--primary); margin-bottom:6px;">
+            <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
+              display:inline-block; animation:pulse 1s infinite;"></span>
+            <span>Listening… click Stop when done.</span>
+          </div>
           <form method="POST">
             <input type="hidden" name="action" value="add_reply">
-            <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
-              <button type="button" id="clearReply" style="display:none; align-items:center; gap:5px;
-                background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
-                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
-                color:var(--danger); cursor:pointer; font-family:var(--font);">
-                <i class="bi bi-x-circle-fill"></i> Clear
-              </button>
-              <button type="button" id="micReply" style="display:flex; align-items:center; gap:5px;
-                background:var(--bg-3); border:1px solid var(--border-strong);
-                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
-                color:var(--text-muted); cursor:pointer; font-family:var(--font);">
-                <i class="bi bi-mic-fill" id="micReplyIcon"></i>
-                <span id="micReplyLabel">Speak</span>
-              </button>
-            </div>
-            <div id="speechStatusReply" style="display:none; align-items:center; gap:8px;
-              background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);
-              border-radius:6px; padding:7px 12px; font-size:12px; color:var(--primary); margin-bottom:6px;">
-              <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
-                display:inline-block; animation:pulse 1s infinite;"></span>
-              <span>Listening… click Stop when done.</span>
-            </div>
-            <textarea name="reply_body" id="replyField" class="form-textarea-custom" rows="3"
-                      placeholder="Write a message visible to the student…"></textarea>
+            <textarea name="reply_body" id="replyField" class="form-textarea-custom" rows="2"
+                      placeholder="Reply to student…"></textarea>
             <div style="margin-top:8px;">
-              <button type="submit" class="btn-primary"><i class="bi bi-send-fill"></i> Send Reply</button>
+              <button type="submit" class="btn-primary">
+                <i class="bi bi-send-fill"></i> Send to Student
+              </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- ── Technician Chat tab ────────────────────────────────────────── -->
+      <div id="panelTech" style="display:none;">
+
+        <div style="padding:16px; display:flex; flex-direction:column; gap:12px; min-height:80px;">
+          {% if tech_comments %}
+            {% for c in tech_comments %}
+            {% set author = user_map.get(c['author_id']) %}
+            <div style="display:flex; gap:10px;
+              justify-content:{% if author and author['role'] == 'admin' %}flex-end{% else %}flex-start{% endif %};">
+              {% if not (author and author['role'] == 'admin') %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:rgba(245,158,11,0.15); color:#f59e0b;
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ author['full_name'][0].upper() if author else '?' }}
+              </div>
+              {% endif %}
+              <div style="max-width:80%;
+                background:{% if author and author['role'] == 'admin' %}var(--accent){% else %}rgba(245,158,11,0.06){% endif %};
+                color:{% if author and author['role'] == 'admin' %}#fff{% else %}var(--text){% endif %};
+                border:1px solid {% if author and author['role'] == 'admin' %}transparent{% else %}rgba(245,158,11,0.2){% endif %};
+                border-radius:10px;
+                {% if author and author['role'] == 'admin' %}border-bottom-right-radius:3px;{% else %}border-bottom-left-radius:3px;{% endif %}
+                padding:10px 14px;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
+                  <span style="font-weight:600; font-size:12px;">{{ author['full_name'] if author else 'Unknown' }}</span>
+                  <span style="font-size:10px; opacity:0.6;">{{ author['role']|title if author else '' }}</span>
+                  <span style="font-size:10px; opacity:0.5; margin-left:auto;">{{ c['created_at'][:16] if c['created_at'] else '' }}</span>
+                </div>
+                <div style="font-size:13.5px; line-height:1.55;">{{ c['body'] }}</div>
+              </div>
+              {% if author and author['role'] == 'admin' %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:var(--accent-dim); color:var(--accent);
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ author['full_name'][0].upper() if author else 'A' }}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          {% else %}
+          <div style="text-align:center; padding:20px; color:var(--text-faint); font-size:13px;">
+            <i class="bi bi-tools" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+            No messages with technician yet
+          </div>
+          {% endif %}
         </div>
 
-        <!-- Staff note form -->
-        <div id="formInternal" style="display:none;">
+        {% if req.technician_id %}
+        <div style="padding:12px 16px; border-top:1px solid var(--border);">
+          <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+            <span style="font-size:10px; color:var(--text-faint); margin-right:auto;">
+              <i class="bi bi-shield-lock"></i> Only admin and technician see this
+            </span>
+            <button type="button" id="clearNote" style="display:none; align-items:center; gap:5px;
+              background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+              border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+              color:var(--danger); cursor:pointer; font-family:var(--font);">
+              <i class="bi bi-x-circle-fill"></i> Clear
+            </button>
+            <button type="button" id="micNote" style="display:flex; align-items:center; gap:5px;
+              background:var(--bg-3); border:1px solid var(--border-strong);
+              border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+              color:var(--text-muted); cursor:pointer; font-family:var(--font);">
+              <i class="bi bi-mic-fill" id="micNoteIcon"></i>
+              <span id="micNoteLabel">Speak</span>
+            </button>
+          </div>
+          <div id="speechStatusNote" style="display:none; align-items:center; gap:8px;
+            background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2);
+            border-radius:6px; padding:7px 12px; font-size:12px; color:#f59e0b; margin-bottom:6px;">
+            <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
+              display:inline-block; animation:pulse 1s infinite;"></span>
+            <span>Listening… click Stop when done.</span>
+          </div>
           <form method="POST">
             <input type="hidden" name="action" value="add_note">
-            <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
-              <button type="button" id="clearNote" style="display:none; align-items:center; gap:5px;
-                background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
-                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
-                color:var(--danger); cursor:pointer; font-family:var(--font);">
-                <i class="bi bi-x-circle-fill"></i> Clear
-              </button>
-              <button type="button" id="micNote" style="display:flex; align-items:center; gap:5px;
-                background:var(--bg-3); border:1px solid var(--border-strong);
-                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
-                color:var(--text-muted); cursor:pointer; font-family:var(--font);">
-                <i class="bi bi-mic-fill" id="micNoteIcon"></i>
-                <span id="micNoteLabel">Speak</span>
-              </button>
-            </div>
-            <div id="speechStatusNote" style="display:none; align-items:center; gap:8px;
-              background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2);
-              border-radius:6px; padding:7px 12px; font-size:12px; color:#f59e0b; margin-bottom:6px;">
-              <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
-                display:inline-block; animation:pulse 1s infinite;"></span>
-              <span>Listening… click Stop when done.</span>
-            </div>
-            <textarea name="note_body" id="noteField" class="form-textarea-custom" rows="3"
-                      placeholder="Staff only note — not visible to the student…"></textarea>
+            <textarea name="note_body" id="noteField" class="form-textarea-custom" rows="2"
+                      placeholder="Message technician…"></textarea>
             <div style="margin-top:8px;">
-              <button type="submit" class="btn-ghost"><i class="bi bi-sticky-fill"></i> Add Note</button>
+              <button type="submit" style="display:flex; align-items:center; gap:6px;
+                background:rgba(245,158,11,0.15); color:#f59e0b;
+                border:1px solid rgba(245,158,11,0.3); border-radius:8px;
+                padding:8px 16px; font-size:13px; font-weight:600;
+                cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-send-fill"></i> Send to Technician
+              </button>
             </div>
           </form>
         </div>
+        {% else %}
+        <div style="padding:16px; text-align:center; color:var(--text-faint); font-size:12px; border-top:1px solid var(--border);">
+          Assign a technician first to chat with them.
+        </div>
+        {% endif %}
+
       </div>
     </div>
 
@@ -264,7 +333,7 @@
             No available technicians for this residence and category.
           </div>
           <button type="button" class="btn-ghost w-100"
-                  onclick="switchTab('public'); document.getElementById('replyField').value='No technician is currently available for your request. We will assign one as soon as possible. Thank you for your patience.'; document.getElementById('clearReply').style.display='flex';">
+                  onclick="switchTab('student'); document.getElementById('replyField').value='No technician is currently available for your request. We will assign one as soon as possible. Thank you for your patience.'; document.getElementById('clearReply').style.display='flex';">
             <i class="bi bi-chat-left-fill"></i> Notify Student
           </button>
           {% else %}
@@ -328,23 +397,25 @@
 
   </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
 function switchTab(tab) {
-    const pubForm = document.getElementById('formPublic');
-    const intForm = document.getElementById('formInternal');
-    const pubTab  = document.getElementById('tabPublic');
-    const intTab  = document.getElementById('tabInternal');
-    if (tab === 'public') {
-        pubForm.style.display = 'block'; intForm.style.display = 'none';
-        pubTab.style.background = 'var(--accent-dim)'; pubTab.style.borderColor = 'var(--accent)'; pubTab.style.color = 'var(--primary)';
-        intTab.style.background = 'var(--bg-3)'; intTab.style.borderColor = 'var(--border-strong)'; intTab.style.color = 'var(--text-muted)';
+    const studentPanel = document.getElementById('panelStudent');
+    const techPanel    = document.getElementById('panelTech');
+    const studentTab   = document.getElementById('tabStudent');
+    const techTab      = document.getElementById('tabTech');
+
+    if (tab === 'student') {
+        studentPanel.style.display = 'block'; techPanel.style.display = 'none';
+        studentTab.style.background  = 'var(--accent-dim)'; studentTab.style.borderColor = 'var(--accent)'; studentTab.style.color = 'var(--primary)';
+        techTab.style.background     = 'var(--bg-3)';       techTab.style.borderColor    = 'var(--border-strong)'; techTab.style.color = 'var(--text-muted)';
     } else {
-        intForm.style.display = 'block'; pubForm.style.display = 'none';
-        intTab.style.background = 'rgba(245,158,11,0.1)'; intTab.style.borderColor = 'rgba(245,158,11,0.3)'; intTab.style.color = '#f59e0b';
-        pubTab.style.background = 'var(--bg-3)'; pubTab.style.borderColor = 'var(--border-strong)'; pubTab.style.color = 'var(--text-muted)';
+        techPanel.style.display    = 'block'; studentPanel.style.display = 'none';
+        techTab.style.background     = 'rgba(245,158,11,0.1)'; techTab.style.borderColor    = 'rgba(245,158,11,0.3)'; techTab.style.color = '#f59e0b';
+        studentTab.style.background  = 'var(--bg-3)';          studentTab.style.borderColor = 'var(--border-strong)'; studentTab.style.color = 'var(--text-muted)';
     }
 }
 
@@ -388,7 +459,6 @@ function setupVoiceInput(textareaId, micBtnId, micIconId, micLabelId, clearBtnId
         stop();
     };
     rec.onend = () => { if (listening) rec.start(); };
-
     function stop() {
         listening = false; rec.stop();
         micBtn.style.background = ''; micBtn.style.borderColor = ''; micBtn.style.color = '';

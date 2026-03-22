@@ -9,7 +9,7 @@
 <!--  Stat Cards -->
 <div class="row g-3 mb-4">
 
-  <!-- Total Requests — now clickable and clears all filters -->
+  <!-- Total Requests — clears all filters -->
   <div class="col-6 col-md-4 col-lg-2">
     <a href="{{ url_for('admin.admin_dashboard') }}" class="text-decoration-none">
       <div class="stat-card">
@@ -76,10 +76,11 @@
 <div class="card mb-3">
   <div class="card-body py-2">
 
-    <!-- Room number search -->
+    <!-- Room number search — preserves ALL active filters including residence -->
     <form method="GET" action="{{ url_for('admin.admin_dashboard') }}" class="d-flex gap-2 mb-2">
       {% if status_filter %}<input type="hidden" name="status" value="{{ status_filter }}">{% endif %}
       {% if priority_filter %}<input type="hidden" name="priority" value="{{ priority_filter }}">{% endif %}
+      {% if residence_filter %}<input type="hidden" name="residence" value="{{ residence_filter }}">{% endif %}
       <input type="hidden" name="page" value="1">
       <div class="input-group input-group-sm" style="max-width:280px;">
         <span class="input-group-text"><i class="bi bi-door-closed"></i></span>
@@ -87,7 +88,7 @@
                placeholder="Search by room number…"
                value="{{ room_search }}">
         {% if room_search %}
-        <a href="{{ url_for('admin.admin_dashboard') }}{% if status_filter %}?status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}"
+        <a href="{{ url_for('admin.admin_dashboard') }}{% if status_filter %}?status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if residence_filter %}&residence={{ residence_filter }}{% endif %}"
            class="btn btn-outline-secondary btn-sm" title="Clear room search">
           <i class="bi bi-x-lg"></i>
         </a>
@@ -96,23 +97,29 @@
       </div>
     </form>
 
-    <!-- Status + Priority filter pills -->
+    <!-- Status + Priority + Residence filter pills -->
     <div class="d-flex flex-wrap gap-2 align-items-center">
       <span class="text-muted small fw-semibold me-1">Filter:</span>
       {% set statuses = ['pending','assigned','in_progress','resolved','closed','cancelled'] %}
       {% for s in statuses %}
-      <a href="{{ url_for('admin.admin_dashboard') }}?status={{ s }}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if room_search %}&room={{ room_search }}{% endif %}&page=1"
+      <a href="{{ url_for('admin.admin_dashboard') }}?status={{ s }}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if residence_filter %}&residence={{ residence_filter }}{% endif %}{% if room_search %}&room={{ room_search }}{% endif %}&page=1"
          class="badge rounded-pill text-decoration-none {% if status_filter == s %}bg-primary{% else %}bg-light text-dark border{% endif %}">
         {{ s | replace('_', ' ') | title }}
       </a>
       {% endfor %}
       {% for p in ['low','medium','high','critical'] %}
-      <a href="{{ url_for('admin.admin_dashboard') }}?priority={{ p }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if room_search %}&room={{ room_search }}{% endif %}&page=1"
+      <a href="{{ url_for('admin.admin_dashboard') }}?priority={{ p }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if residence_filter %}&residence={{ residence_filter }}{% endif %}{% if room_search %}&room={{ room_search }}{% endif %}&page=1"
          class="badge rounded-pill text-decoration-none {% if priority_filter == p %}bg-danger{% else %}bg-light text-dark border{% endif %}">
         {{ p | title }}
       </a>
       {% endfor %}
-      {% if status_filter or priority_filter or room_search %}
+      {% for res in residences %}
+      <a href="{{ url_for('admin.admin_dashboard') }}?residence={{ res['name'] }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if priority_filter %}&priority={{ priority_filter }}{% endif %}{% if room_search %}&room={{ room_search }}{% endif %}&page=1"
+         class="badge rounded-pill text-decoration-none {% if residence_filter == res['name'] %}bg-info text-dark{% else %}bg-light text-dark border{% endif %}">
+        <i class="bi bi-building"></i> {{ res['name'] }}
+      </a>
+      {% endfor %}
+      {% if status_filter or priority_filter or room_search or residence_filter %}
       <a href="{{ url_for('admin.admin_dashboard') }}" class="badge rounded-pill bg-secondary text-decoration-none">
         <i class="bi bi-x-lg"></i> Clear All
       </a>
@@ -127,7 +134,7 @@
   <div class="card-header d-flex justify-content-between align-items-center">
     <span class="fw-semibold">
       Maintenance Requests
-      {% if status_filter or priority_filter or room_search %}
+      {% if status_filter or priority_filter or room_search or residence_filter %}
         <span class="badge bg-primary ms-1">Filtered</span>
       {% endif %}
     </span>
@@ -212,7 +219,7 @@
         <!-- Previous -->
         <li class="page-item {% if page == 1 %}disabled{% endif %}">
           <a class="page-link"
-             href="{{ url_for('admin.admin_dashboard', page=page-1, status=status_filter, priority=priority_filter, room=room_search) }}">
+             href="{{ url_for('admin.admin_dashboard', page=page-1, status=status_filter, priority=priority_filter, room=room_search, residence=residence_filter) }}">
             <i class="bi bi-chevron-left"></i>
           </a>
         </li>
@@ -222,7 +229,7 @@
           {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
             <li class="page-item {% if p == page %}active{% endif %}">
               <a class="page-link"
-                 href="{{ url_for('admin.admin_dashboard', page=p, status=status_filter, priority=priority_filter, room=room_search) }}">
+                 href="{{ url_for('admin.admin_dashboard', page=p, status=status_filter, priority=priority_filter, room=room_search, residence=residence_filter) }}">
                 {{ p }}
               </a>
             </li>
@@ -234,7 +241,7 @@
         <!-- Next -->
         <li class="page-item {% if page == total_pages %}disabled{% endif %}">
           <a class="page-link"
-             href="{{ url_for('admin.admin_dashboard', page=page+1, status=status_filter, priority=priority_filter, room=room_search) }}">
+             href="{{ url_for('admin.admin_dashboard', page=page+1, status=status_filter, priority=priority_filter, room=room_search, residence=residence_filter) }}">
             <i class="bi bi-chevron-right"></i>
           </a>
         </li>

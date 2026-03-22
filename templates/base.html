@@ -80,7 +80,6 @@
        class="nav-link {% if request.endpoint == 'resident.new_request' %}active{% endif %}">
       <i class="bi bi-plus-circle-fill"></i> New Request
     </a>
-   
     <div class="nav-divider">Account</div>
     <a href="{{ url_for('resident.profile') }}"
        class="nav-link {% if request.endpoint == 'resident.profile' %}active{% endif %}">
@@ -160,7 +159,7 @@
       {% if messages %}
         <div class="flash-container">
           {% for category, message in messages %}
-            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible " role="alert">
               <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}x-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}-fill me-2"></i>
               {{ message }}
               <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
@@ -182,7 +181,7 @@
     {% if messages %}
       <div style="position:fixed;top:1rem;right:1rem;z-index:9999;min-width:300px;">
         {% for category, message in messages %}
-          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show shadow" role="alert">
+          <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible " role="alert">
             <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}x-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}-fill me-2"></i>
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>

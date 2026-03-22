@@ -1,14 +1,14 @@
 {% extends 'base.html' %}
 
 {% block title %}My Requests — ResiFix{% endblock %}
-
 {% block page_title %}My Maintenance Requests{% endblock %}
 
 {% block content %}
+
 <!-- Stats Row -->
 <div class="stats-row">
     <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(37,99,235,0.1); color: var(--accent);">
+        <div class="stat-icon" style="background:rgba(37,99,235,0.1); color:var(--accent);">
             <i class="bi bi-clipboard-check"></i>
         </div>
         <div>
@@ -16,9 +16,8 @@
             <div class="stat-label">Total Requests</div>
         </div>
     </div>
-    
     <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(245,158,11,0.1); color: var(--warning);">
+        <div class="stat-icon" style="background:rgba(245,158,11,0.1); color:var(--warning);">
             <i class="bi bi-clock-history"></i>
         </div>
         <div>
@@ -26,9 +25,8 @@
             <div class="stat-label">Pending</div>
         </div>
     </div>
-    
     <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(37,99,235,0.1); color: var(--info);">
+        <div class="stat-icon" style="background:rgba(37,99,235,0.1); color:var(--info);">
             <i class="bi bi-tools"></i>
         </div>
         <div>
@@ -36,9 +34,8 @@
             <div class="stat-label">In Progress</div>
         </div>
     </div>
-    
     <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(34,197,94,0.1); color: var(--success);">
+        <div class="stat-icon" style="background:rgba(34,197,94,0.1); color:var(--success);">
             <i class="bi bi-check-circle"></i>
         </div>
         <div>
@@ -67,7 +64,6 @@
         {% for req in requests %}
         <a href="{{ url_for('resident.view_request', request_id=req.id) }}" class="request-row">
             <div class="request-ticket font-mono">{{ req.ticket_no }}</div>
-            
             <div class="request-main">
                 <div class="request-title">{{ req.title }}</div>
                 <div class="request-meta">
@@ -76,42 +72,31 @@
                     {% if req.technician_id %}
                     <span><i class="bi bi-person-gear"></i> Assigned</span>
                     {% endif %}
+                    {% if req.is_worsening %}
+                    <span style="color:var(--danger);">
+                        <i class="bi bi-arrow-up-right-circle-fill"></i> Worsening
+                    </span>
+                    {% endif %}
                 </div>
             </div>
-            
             <div class="request-badges">
-                {% if req.priority == 'critical' %}
-                <span class="priority-badge priority-critical">Critical</span>
-                {% elif req.priority == 'high' %}
-                <span class="priority-badge priority-high">High</span>
-                {% elif req.priority == 'medium' %}
-                <span class="priority-badge priority-medium">Medium</span>
-                {% else %}
-                <span class="priority-badge priority-low">Low</span>
-                {% endif %}
-                
-                {% if req.status == 'pending' %}
-                <span class="status-badge badge-pending">Pending</span>
-                {% elif req.status == 'assigned' %}
-                <span class="status-badge badge-assigned">Assigned</span>
-                {% elif req.status == 'in_progress' %}
-                <span class="status-badge badge-progress">In Progress</span>
-                {% elif req.status == 'resolved' %}
-                <span class="status-badge badge-resolved">Resolved</span>
-                {% endif %}
+                {% if req.priority == 'critical' %}<span class="priority-badge priority-critical">Critical</span>
+                {% elif req.priority == 'high' %}<span class="priority-badge priority-high">High</span>
+                {% elif req.priority == 'medium' %}<span class="priority-badge priority-medium">Medium</span>
+                {% else %}<span class="priority-badge priority-low">Low</span>{% endif %}
+
+                {% if req.status == 'pending' %}<span class="status-badge badge-pending">Pending</span>
+                {% elif req.status == 'assigned' %}<span class="status-badge badge-assigned">Assigned</span>
+                {% elif req.status == 'in_progress' %}<span class="status-badge badge-progress">In Progress</span>
+                {% elif req.status == 'resolved' %}<span class="status-badge badge-resolved">Resolved</span>{% endif %}
             </div>
-            
-            <div class="request-arrow">
-                <i class="bi bi-chevron-right"></i>
-            </div>
+            <div class="request-arrow"><i class="bi bi-chevron-right"></i></div>
         </a>
         {% endfor %}
     </div>
     {% else %}
     <div class="empty-state">
-        <div class="empty-icon">
-            <i class="bi bi-inbox"></i>
-        </div>
+        <div class="empty-icon"><i class="bi bi-inbox"></i></div>
         <h3 class="empty-title">No requests yet</h3>
         <p class="empty-sub">Create your first maintenance request to get started</p>
         <a href="{{ url_for('resident.new_request') }}" class="btn-primary mt-4">
@@ -120,4 +105,212 @@
     </div>
     {% endif %}
 </div>
+
+<!-- ── AI Assistant Chatbot (only shown if GROQ_API_KEY is set) ─────────── -->
+{% if groq_enabled %}
+
+<button id="chatToggle" onclick="toggleChat()" title="Need help? Ask ResiFix AI"
+        style="position:fixed; bottom:28px; right:28px; width:58px; height:58px;
+               border-radius:50%; background:linear-gradient(135deg,var(--accent) 0%,#7c3aed 100%);
+               border:none; color:#fff; font-size:24px; cursor:pointer;
+               box-shadow:0 4px 20px rgba(37,99,235,0.5); display:flex;
+               align-items:center; justify-content:center; z-index:999;
+               transition:transform 0.2s,box-shadow 0.2s;"
+        onmouseover="this.style.transform='scale(1.1)';this.style.boxShadow='0 6px 28px rgba(37,99,235,0.7)';"
+        onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 20px rgba(37,99,235,0.5)';">
+    <i class="bi bi-stars" id="chatBubbleIcon"></i>
+</button>
+
+<div id="chatBadge" style="position:fixed; bottom:72px; right:24px;
+     background:var(--danger); color:#fff; font-size:10px; font-weight:700;
+     padding:2px 7px; border-radius:10px; z-index:1000; pointer-events:none;">New</div>
+
+<div id="chatPanel" style="position:fixed; bottom:100px; right:28px; width:360px;
+     max-height:540px; background:var(--bg-2); border:1px solid var(--border-strong);
+     border-radius:16px; box-shadow:0 8px 40px rgba(0,0,0,0.5);
+     display:none; flex-direction:column; z-index:998; overflow:hidden;">
+
+    <div style="background:linear-gradient(135deg,var(--accent) 0%,#7c3aed 100%);
+                padding:14px 18px; display:flex; align-items:center; gap:12px;">
+        <div style="width:36px; height:36px; border-radius:50%;
+                    background:rgba(255,255,255,0.15);
+                    display:flex; align-items:center; justify-content:center; font-size:18px;">🤖</div>
+        <div style="flex:1;">
+            <div style="font-weight:700; font-size:14px; color:#fff;">ResiFix Assistant</div>
+            <div style="font-size:11px; color:rgba(255,255,255,0.7);">AI-powered · Here to help</div>
+        </div>
+        <button onclick="toggleChat()"
+                style="background:none; border:none; color:rgba(255,255,255,0.8);
+                       font-size:18px; cursor:pointer; padding:0; line-height:1;">×</button>
+    </div>
+
+    <div id="chatMessages" style="flex:1; overflow-y:auto; padding:16px;
+         display:flex; flex-direction:column; gap:12px; max-height:360px;">
+        <div class="chat-msg bot">
+            <div class="chat-bubble bot-bubble">
+                👋 Hi <strong>{{ session.get('full_name', 'there').split()[0] }}</strong>!
+                I'm your ResiFix assistant.<br><br>
+                Tell me what's wrong — I can help you describe it properly
+                or suggest a quick fix before submitting a request. 🔧
+            </div>
+        </div>
+    </div>
+
+    <div id="quickChips" style="padding:0 16px 8px; display:flex; flex-wrap:wrap; gap:6px;">
+        <button class="chip" onclick="sendChip('My tap is leaking')">🚰 Leaking tap</button>
+        <button class="chip" onclick="sendChip('My light is not working')">💡 Light issue</button>
+        <button class="chip" onclick="sendChip('WiFi is not working in my room')">📶 WiFi problem</button>
+        <button class="chip" onclick="sendChip('My door won\'t lock properly')">🔒 Door/lock issue</button>
+    </div>
+
+    <div style="padding:12px 16px; border-top:1px solid var(--border);
+                display:flex; gap:8px; align-items:flex-end;">
+        <textarea id="chatInput" rows="1" placeholder="Describe your issue…"
+                  style="flex:1; background:var(--bg-3); border:1px solid var(--border-strong);
+                         border-radius:10px; color:var(--text); padding:9px 12px;
+                         font-family:var(--font); font-size:13px; resize:none; outline:none;
+                         line-height:1.4; max-height:80px; overflow-y:auto;"
+                  onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}"
+                  oninput="autoResize(this)"></textarea>
+        <button onclick="sendMessage()" id="sendBtn"
+                style="width:36px; height:36px; border-radius:50%; background:var(--accent);
+                       border:none; color:#fff; font-size:15px; cursor:pointer;
+                       display:flex; align-items:center; justify-content:center;
+                       flex-shrink:0; transition:background 0.15s;">
+            <i class="bi bi-send-fill"></i>
+        </button>
+    </div>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if groq_enabled %}
+<script>
+let chatOpen = false, chatHistory = [], firstOpen = true;
+
+function toggleChat() {
+    chatOpen = !chatOpen;
+    const panel = document.getElementById('chatPanel');
+    const icon  = document.getElementById('chatBubbleIcon');
+    const badge = document.getElementById('chatBadge');
+    panel.style.display = chatOpen ? 'flex' : 'none';
+    icon.className      = chatOpen ? 'bi bi-x-lg' : 'bi bi-stars';
+    if (firstOpen) { badge.style.display = 'none'; firstOpen = false; }
+    if (chatOpen)  { document.getElementById('chatInput').focus(); scrollToBottom(); }
+}
+
+async function sendMessage() {
+    const input = document.getElementById('chatInput');
+    const text  = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    autoResize(input);
+    hideChips();
+    appendMessage('user', text);
+    chatHistory.push({ role: 'user', content: text });
+
+    const btn = document.getElementById('sendBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+    const tid = showTyping();
+
+    try {
+        const res = await fetch('/api/groq-chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messages: chatHistory })
+        });
+        removeTyping(tid);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            appendMessage('bot', `⚠️ Sorry, I couldn't reach the AI right now. (${err.error || res.status})`);
+            return;
+        }
+        const data  = await res.json();
+        const reply = data.choices?.[0]?.message?.content || 'Sorry, no response received.';
+        chatHistory.push({ role: 'assistant', content: reply });
+        appendMessage('bot', reply);
+        if (reply.toLowerCase().includes('submit') || reply.toLowerCase().includes('request'))
+            appendSubmitShortcut();
+    } catch(e) {
+        removeTyping(tid);
+        appendMessage('bot', '⚠️ Network error. Please check your connection and try again.');
+    } finally {
+        btn.disabled  = false;
+        btn.innerHTML = '<i class="bi bi-send-fill"></i>';
+    }
+}
+
+function sendChip(t) { document.getElementById('chatInput').value = t; sendMessage(); }
+function hideChips() { const c = document.getElementById('quickChips'); if(c) c.style.display='none'; }
+
+function appendMessage(role, text) {
+    const c   = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = `chat-msg ${role}`;
+    const fmt = text.replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+    div.innerHTML = `<div class="chat-bubble ${role}-bubble">${fmt}</div>`;
+    c.appendChild(div);
+    scrollToBottom();
+}
+
+function appendSubmitShortcut() {
+    const c   = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.style.cssText = 'display:flex; justify-content:flex-start; padding-left:4px;';
+    div.innerHTML = `<a href="/request/new" style="display:inline-flex;align-items:center;gap:6px;
+        background:var(--accent);color:#fff;border-radius:20px;padding:7px 14px;
+        font-size:12px;font-weight:600;text-decoration:none;margin-top:4px;">
+        <i class="bi bi-plus-circle-fill"></i> Submit a Request</a>`;
+    c.appendChild(div);
+    scrollToBottom();
+}
+
+function showTyping() {
+    const id  = 'typing-' + Date.now();
+    const c   = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.id    = id;
+    div.className = 'chat-msg bot';
+    div.innerHTML = `<div class="chat-bubble bot-bubble" style="padding:10px 14px;">
+        <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+    </div>`;
+    c.appendChild(div);
+    scrollToBottom();
+    return id;
+}
+function removeTyping(id) { const el=document.getElementById(id); if(el) el.remove(); }
+function scrollToBottom()  { const el=document.getElementById('chatMessages'); el.scrollTop=el.scrollHeight; }
+function autoResize(el)    { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,80)+'px'; }
+</script>
+
+<style>
+.chat-msg        { display:flex; }
+.chat-msg.user   { justify-content:flex-end; }
+.chat-msg.bot    { justify-content:flex-start; }
+.chat-bubble     { max-width:85%; padding:10px 14px; border-radius:14px;
+                   font-size:13px; line-height:1.55; word-wrap:break-word; }
+.bot-bubble      { background:var(--bg-3); border:1px solid var(--border);
+                   border-bottom-left-radius:4px; color:var(--text); }
+.user-bubble     { background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
+.chip            { background:var(--bg-3); border:1px solid var(--border-strong);
+                   border-radius:20px; color:var(--text-muted); font-size:11px;
+                   font-weight:600; padding:5px 11px; cursor:pointer;
+                   font-family:var(--font); transition:all 0.15s; }
+.chip:hover      { background:var(--accent-dim); border-color:var(--accent); color:var(--primary); }
+.typing-dot      { display:inline-block; width:7px; height:7px; border-radius:50%;
+                   background:var(--text-muted); margin:0 2px;
+                   animation:typingBounce 1.2s infinite ease-in-out; }
+.typing-dot:nth-child(2) { animation-delay:0.2s; }
+.typing-dot:nth-child(3) { animation-delay:0.4s; }
+@keyframes typingBounce { 0%,80%,100%{transform:translateY(0);opacity:0.4;} 40%{transform:translateY(-6px);opacity:1;} }
+@media(max-width:480px){
+  #chatPanel  { width:calc(100vw - 32px) !important; right:16px !important; bottom:90px !important; }
+  #chatToggle { right:16px !important; bottom:20px !important; }
+  #chatBadge  { right:12px !important; }
+}
+</style>
+{% endif %}
 {% endblock %}

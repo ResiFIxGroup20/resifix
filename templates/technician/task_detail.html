@@ -69,7 +69,7 @@
         <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:8px;">
           {% for img in images %}
           <a href="{{ img['file_path'] }}" target="_blank">
-              <img src="{{ img['file_path'] }}"
+            <img src="{{ img['file_path'] }}"
                  style="width:100px; height:80px; object-fit:cover; border-radius:6px; border:1px solid var(--border);">
           </a>
           {% endfor %}
@@ -77,131 +77,240 @@
       </div>
       {% endif %}
 
-      <!-- Staff Notes & Messages -->
-      <div class="comments-section">
-        <div class="section-label-sm" style="margin-bottom:16px;">
-          Staff Notes & Messages
-          <span style="font-size:10px; color:var(--text-faint); font-weight:400; margin-left:8px;">(not visible to student)</span>
+      <!-- ── Messages & Notes ────────────────────────────────────────────── -->
+      <div class="card-panel">
+        <div class="panel-header">
+          <div class="panel-title"><i class="bi bi-chat-left-text-fill"></i> Messages & Notes</div>
         </div>
 
-        {% if comments %}
-        <div class="comments-list">
-          {% for c in comments %}
-          {% set author = user_map.get(c['author_id']) %}
-          <div class="comment-item">
-            <div class="comment-avatar" style="
-              background:{% if author and author['role'] == 'admin' %}var(--accent-dim){% else %}var(--bg-3){% endif %};
-              color:{% if author and author['role'] == 'admin' %}var(--accent){% else %}var(--text-muted){% endif %};">
-              {{ author['full_name'][0].upper() if author else '?' }}
+        <!-- 3-tab switcher -->
+        <div style="display:flex; gap:6px; padding:14px 16px 0;">
+          <button type="button" id="tabAdmin" onclick="switchTab('admin')"
+                  style="flex:1; padding:6px; border-radius:6px; border:1px solid var(--accent);
+                    background:var(--accent-dim); color:var(--primary); font-size:11px;
+                    font-weight:600; cursor:pointer; font-family:var(--font);">
+            🛡️ Admin
+            {% if admin_comments|length > 0 %}
+            <span style="background:var(--accent); color:#fff; border-radius:10px;
+              padding:1px 5px; font-size:9px; margin-left:2px;">{{ admin_comments|length }}</span>
+            {% endif %}
+          </button>
+          <button type="button" id="tabStudent" onclick="switchTab('student')"
+                  style="flex:1; padding:6px; border-radius:6px; border:1px solid var(--border-strong);
+                    background:var(--bg-3); color:var(--text-muted); font-size:11px;
+                    font-weight:600; cursor:pointer; font-family:var(--font);">
+            🎓 Student
+            {% if direct_messages|length > 0 %}
+            <span style="background:var(--text-muted); color:var(--bg); border-radius:10px;
+              padding:1px 5px; font-size:9px; margin-left:2px;">{{ direct_messages|length }}</span>
+            {% endif %}
+          </button>
+          <button type="button" id="tabNote" onclick="switchTab('note')"
+                  style="flex:1; padding:6px; border-radius:6px; border:1px solid var(--border-strong);
+                    background:var(--bg-3); color:var(--text-muted); font-size:11px;
+                    font-weight:600; cursor:pointer; font-family:var(--font);">
+            📋 My Notes
+          </button>
+        </div>
+
+        <!-- ── Admin Chat panel ────────────────────────────────────────── -->
+        <div id="panelAdmin" style="padding:16px;">
+          {% if admin_comments %}
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+            {% for c in admin_comments %}
+            {% set author = user_map.get(c['author_id']) %}
+            <div style="display:flex; gap:10px;
+              justify-content:{% if c['author_id'] == session.user_id %}flex-end{% else %}flex-start{% endif %};">
+              {% if c['author_id'] != session.user_id %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:var(--accent-dim); color:var(--accent);
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ author['full_name'][0].upper() if author else '?' }}
+              </div>
+              {% endif %}
+              <div style="max-width:80%;
+                background:{% if c['author_id'] == session.user_id %}var(--accent){% else %}var(--bg-3){% endif %};
+                color:{% if c['author_id'] == session.user_id %}#fff{% else %}var(--text){% endif %};
+                border:1px solid {% if c['author_id'] == session.user_id %}transparent{% else %}var(--border){% endif %};
+                border-radius:10px;
+                {% if c['author_id'] == session.user_id %}border-bottom-right-radius:3px;{% else %}border-bottom-left-radius:3px;{% endif %}
+                padding:10px 14px;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
+                  <span style="font-weight:600; font-size:12px;">{{ author['full_name'] if author else 'Unknown' }}</span>
+                  <span style="font-size:10px; opacity:0.6;">{{ author['role']|title if author else '' }}</span>
+                  <span style="font-size:10px; opacity:0.5; margin-left:auto;">{{ c['created_at'][:16] if c['created_at'] else '' }}</span>
+                </div>
+                <div style="font-size:13.5px; line-height:1.55;">{{ c['body'] }}</div>
+              </div>
+              {% if c['author_id'] == session.user_id %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:rgba(124,58,237,0.15); color:#7c3aed;
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ author['full_name'][0].upper() if author else '?' }}
+              </div>
+              {% endif %}
             </div>
-            <div class="comment-body">
-              <div class="comment-meta">
-                <span class="comment-author">{{ author['full_name'] if author else 'Unknown' }}</span>
-                <span class="comment-role">{{ author['role']|title if author else '' }}</span>
-                {% if author and author['role'] == 'admin' %}
-                <span class="internal-badge" style="background:var(--accent-dim); color:var(--primary);">Admin</span>
-                {% else %}
-                <span class="internal-badge">Note</span>
-                {% endif %}
-                <span class="comment-date">{{ c['created_at'][:16] if c['created_at'] else '' }}</span>
-              </div>
-              <div class="comment-text">{{ c['body'] }}</div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p style="color:var(--text-faint); font-size:13px; padding:8px 0 16px;">No messages with admin yet.</p>
+          {% endif %}
+
+          <form method="POST">
+            <input type="hidden" name="action" value="add_reply">
+            <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+              <button type="button" id="clearMsg" style="display:none; align-items:center; gap:5px;
+                background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                color:var(--danger); cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-x-circle-fill"></i> Clear
+              </button>
+              <button type="button" id="micMsg" style="display:flex; align-items:center; gap:5px;
+                background:var(--bg-3); border:1px solid var(--border-strong);
+                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                color:var(--text-muted); cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-mic-fill" id="micMsgIcon"></i>
+                <span id="micMsgLabel">Speak</span>
+              </button>
             </div>
-          </div>
-          {% endfor %}
+            <div id="speechStatusMsg" style="display:none; align-items:center; gap:8px;
+              background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);
+              border-radius:6px; padding:7px 12px; font-size:12px; color:var(--primary); margin-bottom:6px;">
+              <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
+                display:inline-block; animation:pulse 1s infinite;"></span>
+              <span>Listening… click Stop when done.</span>
+            </div>
+            <textarea name="reply_body" id="msgField" class="form-textarea-custom" rows="2"
+                      placeholder="Send a message to admin…"></textarea>
+            <div style="margin-top:8px;">
+              <button type="submit" class="btn-primary"><i class="bi bi-send-fill"></i> Send to Admin</button>
+            </div>
+          </form>
         </div>
-        {% else %}
-        <p style="color:var(--text-faint); font-size:13px; padding:12px 0;">No notes yet.</p>
-        {% endif %}
 
-        <!-- Tab switcher -->
-        <div style="margin-top:20px;">
-          <div style="display:flex; gap:8px; margin-bottom:14px;">
-            <button type="button" id="tabMsg" onclick="switchTab('msg')"
-                    style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--accent);
-                      background:var(--accent-dim); color:var(--primary); font-size:12px;
-                      font-weight:600; cursor:pointer; font-family:var(--font);">
-              📩 Message Admin
-            </button>
-            <button type="button" id="tabNote" onclick="switchTab('note')"
-                    style="flex:1; padding:7px; border-radius:6px; border:1px solid var(--border-strong);
-                      background:var(--bg-3); color:var(--text-muted); font-size:12px;
-                      font-weight:600; cursor:pointer; font-family:var(--font);">
-              📋 Work Note
-            </button>
+        <!-- ── Student Chat panel ──────────────────────────────────────── -->
+        <div id="panelStudent" style="display:none; padding:16px;">
+          {% if direct_messages %}
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:16px;">
+            {% for msg in direct_messages %}
+            <div style="display:flex; gap:10px; justify-content:{% if msg.is_mine %}flex-end{% else %}flex-start{% endif %};">
+              {% if not msg.is_mine %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:rgba(34,197,94,0.15); color:var(--success);
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ msg.author_name[0] if msg.author_name else '?' }}
+              </div>
+              {% endif %}
+              <div style="max-width:80%;
+                background:{% if msg.is_mine %}linear-gradient(135deg,var(--accent),#7c3aed){% else %}var(--bg-3){% endif %};
+                color:{% if msg.is_mine %}#fff{% else %}var(--text){% endif %};
+                border:1px solid {% if msg.is_mine %}transparent{% else %}var(--border){% endif %};
+                border-radius:10px;
+                {% if msg.is_mine %}border-bottom-right-radius:3px;{% else %}border-bottom-left-radius:3px;{% endif %}
+                padding:10px 14px;">
+                <div style="display:flex; align-items:center; gap:6px; margin-bottom:4px; flex-wrap:wrap;">
+                  <span style="font-weight:600; font-size:12px;">{{ msg.author_name }}</span>
+                  <span style="font-size:10px; opacity:0.6;">{{ msg.role|title }}</span>
+                  <span style="font-size:10px; opacity:0.5; margin-left:auto;">{{ msg.created_at[:16] }}</span>
+                </div>
+                <div style="font-size:13.5px; line-height:1.55;">{{ msg.body }}</div>
+              </div>
+              {% if msg.is_mine %}
+              <div style="width:32px; height:32px; border-radius:50%; flex-shrink:0;
+                background:rgba(124,58,237,0.15); color:#7c3aed;
+                display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">
+                {{ msg.author_name[0] if msg.author_name else '?' }}
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
           </div>
-
-          <!-- Message admin -->
-          <div id="formMsg">
-            <form method="POST">
-              <input type="hidden" name="action" value="add_reply">
-              <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
-                <button type="button" id="clearMsg" style="display:none; align-items:center; gap:5px;
-                  background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
-                  border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
-                  color:var(--danger); cursor:pointer; font-family:var(--font);">
-                  <i class="bi bi-x-circle-fill"></i> Clear
-                </button>
-                <button type="button" id="micMsg" style="display:flex; align-items:center; gap:5px;
-                  background:var(--bg-3); border:1px solid var(--border-strong);
-                  border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
-                  color:var(--text-muted); cursor:pointer; font-family:var(--font);">
-                  <i class="bi bi-mic-fill" id="micMsgIcon"></i>
-                  <span id="micMsgLabel">Speak</span>
-                </button>
-              </div>
-              <div id="speechStatusMsg" style="display:none; align-items:center; gap:8px;
-                background:rgba(37,99,235,0.08); border:1px solid rgba(37,99,235,0.2);
-                border-radius:6px; padding:7px 12px; font-size:12px; color:var(--primary); margin-bottom:6px;">
-                <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
-                  display:inline-block; animation:pulse 1s infinite;"></span>
-                <span>Listening… click Stop when done.</span>
-              </div>
-              <textarea name="reply_body" id="msgField" class="form-textarea-custom" rows="3"
-                        placeholder="Send a message to admin…"></textarea>
-              <div style="margin-top:8px;">
-                <button type="submit" class="btn-primary"><i class="bi bi-send-fill"></i> Send to Admin</button>
-              </div>
-            </form>
+          {% else %}
+          <div style="text-align:center; padding:20px; color:var(--text-faint); font-size:13px; margin-bottom:16px;">
+            <i class="bi bi-chat-heart" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+            No messages with the student yet
           </div>
+          {% endif %}
 
-          <!-- Work note -->
-          <div id="formNote" style="display:none;">
-            <form method="POST">
-              <input type="hidden" name="action" value="add_note">
-              <div style="display:flex; align-items:center; justify-content:flex-end; gap:6px; margin-bottom:6px;">
-                <button type="button" id="clearTechNote" style="display:none; align-items:center; gap:5px;
-                  background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
-                  border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
-                  color:var(--danger); cursor:pointer; font-family:var(--font);">
-                  <i class="bi bi-x-circle-fill"></i> Clear
-                </button>
-                <button type="button" id="micTechNote" style="display:flex; align-items:center; gap:5px;
-                  background:var(--bg-3); border:1px solid var(--border-strong);
-                  border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
-                  color:var(--text-muted); cursor:pointer; font-family:var(--font);">
-                  <i class="bi bi-mic-fill" id="micTechNoteIcon"></i>
-                  <span id="micTechNoteLabel">Speak</span>
-                </button>
-              </div>
-              <div id="speechStatusTechNote" style="display:none; align-items:center; gap:8px;
-                background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.2);
-                border-radius:6px; padding:7px 12px; font-size:12px; color:var(--primary); margin-bottom:6px;">
-                <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
-                  display:inline-block; animation:pulse 1s infinite;"></span>
-                <span>Listening… click Stop when done.</span>
-              </div>
-              <textarea name="note_body" id="techNoteField" class="form-textarea-custom" rows="3"
-                        placeholder="Describe what you did or found…"></textarea>
-              <div style="margin-top:8px;">
-                <button type="submit" class="btn-ghost"><i class="bi bi-sticky-fill"></i> Save Note</button>
-              </div>
-            </form>
-          </div>
-
+          <form method="POST">
+            <input type="hidden" name="action" value="message_student">
+            <div style="display:flex; justify-content:flex-end; gap:6px; margin-bottom:6px;">
+              <span style="font-size:10px; color:var(--text-faint); margin-right:auto;">
+                <i class="bi bi-shield-lock"></i> Only you and the student see this
+              </span>
+              <button type="button" id="clearStudent" style="display:none; align-items:center; gap:5px;
+                background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25);
+                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                color:var(--danger); cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-x-circle-fill"></i> Clear
+              </button>
+              <button type="button" id="micStudent" style="display:flex; align-items:center; gap:5px;
+                background:var(--bg-3); border:1px solid var(--border-strong);
+                border-radius:20px; padding:4px 10px; font-size:11px; font-weight:600;
+                color:var(--text-muted); cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-mic-fill" id="micStudentIcon"></i>
+                <span id="micStudentLabel">Speak</span>
+              </button>
+            </div>
+            <div id="speechStatusStudent" style="display:none; align-items:center; gap:8px;
+              background:rgba(34,197,94,0.08); border:1px solid rgba(34,197,94,0.2);
+              border-radius:6px; padding:7px 12px; font-size:12px; color:var(--success); margin-bottom:6px;">
+              <span style="width:7px; height:7px; border-radius:50%; background:var(--danger);
+                display:inline-block; animation:pulse 1s infinite;"></span>
+              <span>Listening… click Stop when done.</span>
+            </div>
+            <textarea name="student_message" id="studentField" class="form-textarea-custom" rows="2"
+                      placeholder="Message the student directly…"></textarea>
+            <div style="margin-top:8px;">
+              <button type="submit" style="display:flex; align-items:center; gap:6px;
+                background:linear-gradient(135deg,var(--accent),#7c3aed); color:#fff;
+                border:none; border-radius:8px; padding:8px 16px; font-size:13px;
+                font-weight:600; cursor:pointer; font-family:var(--font);">
+                <i class="bi bi-send-fill"></i> Send to Student
+              </button>
+            </div>
+          </form>
         </div>
+
+        <!-- ── Work Notes panel (private — technician only) ─────────────── -->
+        <div id="panelNote" style="display:none; padding:16px;">
+
+          <div style="background:rgba(96,165,250,0.06); border:1px solid rgba(96,165,250,0.15);
+            border-radius:6px; padding:8px 12px; font-size:11px; color:var(--primary);
+            margin-bottom:14px; display:flex; align-items:center; gap:6px;">
+            <i class="bi bi-lock-fill"></i>
+            Only you can see these notes — not admin, not student.
+          </div>
+
+          {% if work_notes %}
+          <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:16px;">
+            {% for note in work_notes %}
+            <div style="background:var(--bg-3); border:1px solid var(--border);
+              border-left:3px solid var(--primary); border-radius:6px; padding:10px 14px;">
+              <div style="font-size:10px; color:var(--text-faint); margin-bottom:5px;">
+                {{ note['created_at'][:16] if note['created_at'] else '' }}
+              </div>
+              <div style="font-size:13.5px; line-height:1.6; color:var(--text);">{{ note['body'] }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p style="color:var(--text-faint); font-size:13px; padding:8px 0 16px;">No notes yet. Add your first work note below.</p>
+          {% endif %}
+
+          <form method="POST">
+            <input type="hidden" name="action" value="add_note">
+            <textarea name="note_body" id="techNoteField" class="form-textarea-custom" rows="3"
+                      placeholder="Write a private work note — what you found, what you did, parts needed…"></textarea>
+            <div style="margin-top:8px;">
+              <button type="submit" class="btn-primary">
+                <i class="bi bi-sticky-fill"></i> Save Note
+              </button>
+            </div>
+          </form>
+        </div>
+
       </div>
-
     </div>
   </div>
 
@@ -242,23 +351,25 @@
       <div class="info-row"><span>Resolved</span><span>{{ task.resolved_at[:10] }}</span></div>
       {% endif %}
     </div>
+
     {% if rating %}
-<div class="action-card" style="border-color:rgba(245,158,11,0.3); margin-top:12px;">
-    <div class="action-card-title">
+    <div class="action-card" style="border-color:rgba(245,158,11,0.3);">
+      <div class="action-card-title">
         <i class="bi bi-star-fill" style="color:#f59e0b;"></i> Resident Rating
-    </div>
-    <div style="font-size:24px; color:#f59e0b; margin-bottom:8px;">
+      </div>
+      <div style="font-size:24px; color:#f59e0b; margin-bottom:8px;">
         {% for i in range(rating.score) %}&#9733;{% endfor %}
         {% for i in range(5 - rating.score) %}&#9734;{% endfor %}
-    </div>
-    <div style="font-size:13px; color:var(--text-muted);">{{ rating.score }}/5 stars</div>
-    {% if rating.review %}
-    <div style="margin-top:10px; padding:10px; background:var(--bg-3); border-radius:6px; font-size:13px; color:var(--text); line-height:1.6;">
+      </div>
+      <div style="font-size:13px; color:var(--text-muted);">{{ rating.score }}/5 stars</div>
+      {% if rating.review %}
+      <div style="margin-top:10px; padding:10px; background:var(--bg-3); border-radius:6px;
+        font-size:13px; color:var(--text); line-height:1.6;">
         "{{ rating.review }}"
+      </div>
+      {% endif %}
     </div>
     {% endif %}
-</div>
-{% endif %}
 
   </div>
 </div>
@@ -268,19 +379,23 @@
 {% block scripts %}
 <script>
 function switchTab(tab) {
-    const msgForm  = document.getElementById('formMsg');
-    const noteForm = document.getElementById('formNote');
-    const msgTab   = document.getElementById('tabMsg');
-    const noteTab  = document.getElementById('tabNote');
-    if (tab === 'msg') {
-        msgForm.style.display = 'block'; noteForm.style.display = 'none';
-        msgTab.style.background = 'var(--accent-dim)'; msgTab.style.borderColor = 'var(--accent)'; msgTab.style.color = 'var(--primary)';
-        noteTab.style.background = 'var(--bg-3)'; noteTab.style.borderColor = 'var(--border-strong)'; noteTab.style.color = 'var(--text-muted)';
-    } else {
-        noteForm.style.display = 'block'; msgForm.style.display = 'none';
-        noteTab.style.background = 'rgba(96,165,250,0.1)'; noteTab.style.borderColor = 'rgba(96,165,250,0.3)'; noteTab.style.color = 'var(--primary)';
-        msgTab.style.background = 'var(--bg-3)'; msgTab.style.borderColor = 'var(--border-strong)'; msgTab.style.color = 'var(--text-muted)';
-    }
+    const panels = { admin: 'panelAdmin', student: 'panelStudent', note: 'panelNote' };
+    const tabs   = { admin: 'tabAdmin',   student: 'tabStudent',   note: 'tabNote'   };
+    const colors = {
+        admin:   { bg: 'var(--accent-dim)',        border: 'var(--accent)',            color: 'var(--primary)' },
+        student: { bg: 'rgba(124,58,237,0.1)',     border: 'rgba(124,58,237,0.3)',     color: '#7c3aed' },
+        note:    { bg: 'rgba(96,165,250,0.1)',     border: 'rgba(96,165,250,0.3)',     color: 'var(--primary)' },
+    };
+    const off = { bg: 'var(--bg-3)', border: 'var(--border-strong)', color: 'var(--text-muted)' };
+
+    Object.keys(panels).forEach(key => {
+        document.getElementById(panels[key]).style.display = key === tab ? 'block' : 'none';
+        const btn = document.getElementById(tabs[key]);
+        const c   = key === tab ? colors[key] : off;
+        btn.style.background  = c.bg;
+        btn.style.borderColor = c.border;
+        btn.style.color       = c.color;
+    });
 }
 
 function setupVoiceInput(textareaId, micBtnId, micIconId, micLabelId, clearBtnId, statusId) {
@@ -323,7 +438,6 @@ function setupVoiceInput(textareaId, micBtnId, micIconId, micLabelId, clearBtnId
         stop();
     };
     rec.onend = () => { if (listening) rec.start(); };
-
     function stop() {
         listening = false; rec.stop();
         micBtn.style.background = ''; micBtn.style.borderColor = ''; micBtn.style.color = '';
@@ -332,8 +446,9 @@ function setupVoiceInput(textareaId, micBtnId, micIconId, micLabelId, clearBtnId
     micBtn.addEventListener('click', () => { if (!listening) rec.start(); else stop(); });
 }
 
-setupVoiceInput('msgField','micMsg','micMsgIcon','micMsgLabel','clearMsg','speechStatusMsg');
-setupVoiceInput('techNoteField','micTechNote','micTechNoteIcon','micTechNoteLabel','clearTechNote','speechStatusTechNote');
+setupVoiceInput('msgField',     'micMsg',     'micMsgIcon',     'micMsgLabel',     'clearMsg',     'speechStatusMsg');
+setupVoiceInput('studentField', 'micStudent', 'micStudentIcon', 'micStudentLabel', 'clearStudent', 'speechStatusStudent');
+// No voice on work notes tab — text only as requested
 </script>
 
 <style>

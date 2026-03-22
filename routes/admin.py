@@ -108,14 +108,17 @@ def request_detail(request_id):
         flash('Request not found.', 'danger')
         return redirect(url_for('admin.admin_dashboard'))
 
-    # Pass exclude_request_id so the currently assigned technician
-    # still appears in the reassign dropdown
     technicians = get_available_technicians_for_request(
         residence          = req['residence'] or '',
         category           = req['category']  or '',
         exclude_request_id = request_id
     )
-    comments = get_comments_by_request(request_id, include_internal=True)
+
+    # Separate comment channels for admin view
+    # Student chat: is_internal=0 (public — student + admin)
+    student_comments = get_comments_by_request(request_id, include_internal=False)
+    # Technician chat: is_internal=1 (staff — admin + technician)
+    tech_comments    = get_comments_by_request(request_id, staff_only=True)
 
     if request.method == 'POST':
         action = request.form.get('action')
@@ -138,28 +141,32 @@ def request_detail(request_id):
                 flash(f'Status updated to "{new_status}".', 'success')
             return redirect(url_for('admin.request_detail', request_id=request_id))
 
-        if action == 'add_note':
-            body = request.form.get('note_body', '').strip()
-            if not body:
-                flash('Note cannot be empty.', 'warning')
-            else:
-                add_comment(request_id, session['user_id'], body, is_internal=True)
-                flash('Internal note added.', 'success')
-            return redirect(url_for('admin.request_detail', request_id=request_id))
-
         if action == 'add_reply':
+            # Reply to student — is_internal=0 (student sees this)
             body = request.form.get('reply_body', '').strip()
             if not body:
                 flash('Reply cannot be empty.', 'warning')
             else:
-                # is_internal=False so the student can see this
-                add_comment(request_id, session['user_id'], body, is_internal=False)
+                add_comment(request_id, session['user_id'], body, is_internal=0)
                 flash('Reply sent to student.', 'success')
             return redirect(url_for('admin.request_detail', request_id=request_id))
 
+        if action == 'add_note':
+            # Message to technician — is_internal=1 (staff chat)
+            body = request.form.get('note_body', '').strip()
+            if not body:
+                flash('Message cannot be empty.', 'warning')
+            else:
+                add_comment(request_id, session['user_id'], body, is_internal=1)
+                flash('Message sent to technician.', 'success')
+            return redirect(url_for('admin.request_detail', request_id=request_id))
+
     return render_template('admin/request_detail.html',
-        req=req, technicians=technicians,
-        user_map=user_map, comments=comments,
+        req=req,
+        technicians=technicians,
+        user_map=user_map,
+        student_comments=student_comments,
+        tech_comments=tech_comments,
     )
 
 
@@ -237,9 +244,7 @@ def user_detail(user_id):
                 return redirect(url_for('admin.user_detail', user_id=user_id))
 
             update_profile(
-                user_id,
-                full_name,
-                email,
+                user_id, full_name, email,
                 room_number    = room_number    if user['role'] == 'resident'   else None,
                 residence      = residence,
                 specialization = specialization if user['role'] == 'technician' else None
