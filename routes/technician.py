@@ -155,12 +155,8 @@ def task_detail(request_id):
                 flash('Message sent to student.', 'success')
             return redirect(url_for('technician.task_detail', request_id=request_id))
 
-    from database.db import get_connection
-    conn = get_connection()
-    rating = conn.execute(
-        "SELECT * FROM ratings WHERE request_id=?", (request_id,)
-    ).fetchone()
-    conn.close()
+    from database.db import get_rating_by_request
+    rating = get_rating_by_request(request_id)
 
     return render_template('technician/task_detail.html',
                            task=task, user_map=user_map,

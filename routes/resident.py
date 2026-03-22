@@ -142,13 +142,8 @@ def new_request():
                     continue
                 try:
                     image_url = _save_image_file(file)
-                    from database.db import get_connection
-                    conn = get_connection()
-                    row  = conn.execute(
-                        "SELECT id FROM maintenance_requests WHERE ticket_no=?",
-                        (ticket_no,)
-                    ).fetchone()
-                    conn.close()
+                    from database.db import get_request_id_by_ticket
+                    row = get_request_id_by_ticket(ticket_no)
                     if row:
                         save_image(row['id'], image_url)
                 except Exception as e:
@@ -211,13 +206,8 @@ def view_request(request_id):
 
     images = get_images_by_request(request_id)
 
-    from database.db import get_connection
-    conn = get_connection()
-    existing_rating = conn.execute(
-        "SELECT * FROM ratings WHERE request_id=? AND resident_id=?",
-        (request_id, session['user_id'])
-    ).fetchone()
-    conn.close()
+    from database.db import get_existing_rating
+    existing_rating = get_existing_rating(request_id, session['user_id'])
 
     return render_template('resident/view_request.html',
                            request=req,

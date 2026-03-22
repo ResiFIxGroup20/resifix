@@ -329,10 +329,8 @@ def manage_residences():
 @admin.route('/admin/residences/<int:residence_id>/toggle', methods=['POST'])
 @admin_required
 def toggle_residence(residence_id):
-    from database.db import get_connection
-    conn = get_connection()
-    res  = conn.execute("SELECT * FROM residences WHERE id=?", (residence_id,)).fetchone()
-    conn.close()
+    from database.db import get_residence_raw
+    res = get_residence_raw(residence_id)
 
     if not res:
         flash('Residence not found.', 'danger')
