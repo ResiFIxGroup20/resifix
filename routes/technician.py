@@ -13,7 +13,6 @@ from database.db import (
     get_images_by_request,
     get_average_rating,
     get_ratings_by_technician,
-    get_all_residences,
 )
 from functools import wraps
 import math
@@ -179,7 +178,6 @@ def task_detail(request_id):
 def profile():
     tech_id    = session['user_id']
     user       = get_user_by_id(tech_id)
-    residences = get_all_residences()
 
     if not user:
         flash('User not found.', 'danger')
@@ -198,7 +196,6 @@ def profile():
     if request.method == 'POST':
         full_name = request.form.get('full_name', '').strip()
         email     = request.form.get('email',     '').strip()
-        residence = request.form.get('residence', '').strip()
 
         if not full_name:
             flash('Full name cannot be empty.', 'danger')
@@ -207,13 +204,12 @@ def profile():
             flash('Please enter a valid email address.', 'danger')
             return redirect(url_for('technician.profile'))
 
-        update_profile(tech_id, full_name, email, residence=residence)
+        # Residence and specialization are admin-managed — never update from this form
+        update_profile(tech_id, full_name, email)
         session['full_name'] = full_name
-        session['residence'] = residence
         flash('Profile updated successfully.', 'success')
         return redirect(url_for('technician.profile'))
 
     return render_template('technician/profile.html',
                            user=user, stats=stats,
-                           avg_rating=avg_rating, total_ratings=total_ratings,
-                           residences=residences)
+                           avg_rating=avg_rating, total_ratings=total_ratings)

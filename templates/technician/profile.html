@@ -99,21 +99,16 @@
           <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Username cannot be changed.</div>
         </div>
 
-        <!-- Residence — editable dropdown -->
+        <!-- Residence — read only, managed by admin -->
         <div class="form-group-custom">
           <label class="form-label-custom">Residence Building</label>
           <div class="input-icon-wrap">
             <i class="bi bi-building-fill input-icon"></i>
-            <select name="residence" class="form-control-custom" style="padding-left:36px;">
-              <option value="">— Select residence —</option>
-              {% for res in residences %}
-              <option value="{{ res['name'] }}" {% if user['residence'] == res['name'] %}selected{% endif %}>
-                {{ res['name'] }}
-              </option>
-              {% endfor %}
-            </select>
+            <input type="text" class="form-control-custom"
+                   style="padding-left:36px; opacity:0.5; cursor:not-allowed;"
+                   value="{{ user['residence'] or '—' }}" disabled>
           </div>
-          <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Update if you have been reassigned.</div>
+          <div style="font-size:11px; color:var(--text-faint); margin-top:4px;">Managed by admin.</div>
         </div>
 
         <!-- Specialization — read only, managed by admin -->

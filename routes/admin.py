@@ -252,10 +252,20 @@ def user_detail(user_id):
             flash(f"{full_name}'s details updated.", 'success')
             return redirect(url_for('admin.user_detail', user_id=user_id))
 
-    return render_template('admin/user_detail.html', user=user, residences=residences)
+    # Rating stats — only relevant for technicians
+    avg_rating    = 0.0
+    total_ratings = 0
+    if user['role'] == 'technician':
+        from database.db import get_average_rating, get_ratings_by_technician
+        avg_rating    = get_average_rating(user_id)
+        total_ratings = len(get_ratings_by_technician(user_id))
+
+    return render_template('admin/user_detail.html',
+                           user=user, residences=residences,
+                           avg_rating=avg_rating, total_ratings=total_ratings)
 
 
-# ── Toggle User Active ─────────────────────────────────────────────────────
+
 
 @admin.route('/admin/users/<int:user_id>/toggle', methods=['POST'])
 @admin_required
