@@ -24,5 +24,14 @@ with app.app_context():
 def index():
     return redirect(url_for('auth.login'))
 
+@app.route('/seed-db-once')
+def seed_db():
+    from database.db import seed_data
+    try:
+        seed_data()
+        return "Seed data inserted successfully! DELETE THIS ROUTE NOW.", 200
+    except Exception as e:
+        return f"Error: {e}", 500
+
 if __name__ == '__main__':
     app.run(debug=True)
