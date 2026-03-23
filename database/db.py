@@ -53,11 +53,28 @@ def _cursor(conn):
         return conn  # SQLite connection supports .execute() directly
 
 
+def _convert_row(row):
+    """
+    Convert a psycopg2 RealDictRow to a plain dict, turning any datetime/date
+    objects into ISO-format strings so Jinja2 templates can use [:10] slicing
+    just like they did with SQLite string results.
+    """
+    if row is None:
+        return None
+    result = {}
+    for key, value in row.items():
+        if hasattr(value, 'strftime'):
+            result[key] = value.strftime('%Y-%m-%d %H:%M:%S')
+        else:
+            result[key] = value
+    return result
+
+
 def _fetchone(conn, sql, params=()):
     if DRIVER == 'postgres':
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(sql, params)
-        return cur.fetchone()
+        return _convert_row(cur.fetchone())
     else:
         return conn.execute(sql, params).fetchone()
 
@@ -66,7 +83,7 @@ def _fetchall(conn, sql, params=()):
     if DRIVER == 'postgres':
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute(sql, params)
-        return cur.fetchall()
+        return [_convert_row(r) for r in cur.fetchall()]
     else:
         return conn.execute(sql, params).fetchall()
 
