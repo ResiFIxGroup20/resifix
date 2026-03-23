@@ -226,7 +226,7 @@ def user_detail(user_id):
             if user_id == session['user_id']:
                 flash('You cannot deactivate your own account.', 'warning')
             else:
-                new_state = 0 if user['is_active'] else 1
+                new_state = not user['is_active']
                 set_user_active(user_id, new_state)
                 flash(f'{"Activated" if new_state else "Deactivated"} successfully.', 'success')
             return redirect(url_for('admin.user_detail', user_id=user_id))
@@ -293,7 +293,7 @@ def toggle_user(user_id):
         flash('User not found.', 'danger')
         return redirect(url_for('admin.manage_users'))
 
-    new_state = 0 if user['is_active'] else 1
+    new_state = not user['is_active']   # True → deactivate (False), False → activate (True)
     set_user_active(user_id, new_state)
     action = 'activated' if new_state else 'deactivated'
     flash(f'{user["full_name"]} has been {action}.', 'success')
@@ -350,7 +350,7 @@ def toggle_residence(residence_id):
         flash('Residence not found.', 'danger')
         return redirect(url_for('admin.manage_residences'))
 
-    new_state = 0 if res['is_active'] else 1
+    new_state = not res['is_active']
     set_residence_active(residence_id, new_state)
     action = 'activated' if new_state else 'deactivated'
     flash(f'"{res["name"]}" has been {action}.', 'success')
