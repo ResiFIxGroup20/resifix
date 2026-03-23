@@ -21,6 +21,8 @@ from database.db import (
     add_residence,
     set_residence_active,
     update_profile,
+    update_user_password,
+    get_residence_raw,
 )
 from functools import wraps
 import math
@@ -252,7 +254,19 @@ def user_detail(user_id):
             flash(f"{full_name}'s details updated.", 'success')
             return redirect(url_for('admin.user_detail', user_id=user_id))
 
-    # Rating stats — only relevant for technicians
+        if action == 'change_password':
+            new_password = request.form.get('new_password',     '').strip()
+            confirm      = request.form.get('confirm_password', '').strip()
+
+            if len(new_password) < 8:
+                flash('Password must be at least 8 characters.', 'danger')
+            elif new_password != confirm:
+                flash('Passwords do not match.', 'danger')
+            else:
+                from werkzeug.security import generate_password_hash
+                update_user_password(user_id, generate_password_hash(new_password))
+                flash(f"Password updated successfully for {user['full_name']}.", 'success')
+            return redirect(url_for('admin.user_detail', user_id=user_id))
     avg_rating    = 0.0
     total_ratings = 0
     if user['role'] == 'technician':
