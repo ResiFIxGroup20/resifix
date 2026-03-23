@@ -178,8 +178,15 @@ DUT Group 20
     msg.attach(MIMEText(text_body, 'plain'))
     msg.attach(MIMEText(html_body, 'html'))
 
-    # Gmail SMTP over SSL (port 465)
-    with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+    # Gmail SMTP with STARTTLS on port 587.
+    # Port 465 (SMTP_SSL) is blocked on Render's free tier — the socket hangs
+    # until gunicorn kills the worker with SIGTERM, which raises SystemExit
+    # (a BaseException, not caught by "except Exception") and causes a 500.
+    # Port 587 + STARTTLS is not blocked and fails fast on any real error.
+    with smtplib.SMTP('smtp.gmail.com', 587, timeout=15) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.ehlo()
         smtp.login(mail_user, mail_pass)
         smtp.sendmail(mail_user, to_email, msg.as_string())
 
