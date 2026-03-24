@@ -273,7 +273,7 @@ def toggle_worsening(request_id):
         flash('Cannot flag a resolved or closed request.', 'warning')
         return redirect(url_for('resident.view_request', request_id=request_id))
 
-    new_val = 0 if req['is_worsening'] else 1
+    new_val = not bool(req['is_worsening'])
     mark_worsening(request_id, new_val)
     if new_val:
         flash('Issue flagged as worsening. The admin will be notified.', 'warning')
