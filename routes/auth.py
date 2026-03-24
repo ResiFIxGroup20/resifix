@@ -5,9 +5,7 @@
 # ============================================================
 
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import requests as http_requests
 
 from flask import (Blueprint, render_template, request,
                    redirect, url_for, flash, session)
@@ -43,23 +41,24 @@ def _redirect_by_role(role):
 
 def _send_reset_email(to_email, reset_link, user_name):
     """
-    Send a password-reset email via Gmail SMTP with an App Password.
-    Raises RuntimeError if MAIL_USERNAME / MAIL_PASSWORD are not set.
+    Send a password-reset email via Resend HTTP API.
+    Render's free tier blocks all outbound SMTP (ports 465 and 587 both
+    return Errno 101 Network unreachable). HTTP is never blocked.
+    Raises RuntimeError if RESEND_API_KEY is not configured.
     """
-    mail_user  = os.getenv('MAIL_USERNAME', '').strip()
-    mail_pass  = os.getenv('MAIL_PASSWORD', '').strip()
-    from_name  = os.getenv('MAIL_FROM_NAME', 'ResiFix')
+    api_key   = os.getenv('RESEND_API_KEY', '').strip()
+    from_name = os.getenv('MAIL_FROM_NAME', 'ResiFix')
+    # Resend requires a verified sender domain in production.
+    # Use MAIL_FROM_ADDRESS env var (e.g. noreply@yourdomain.com).
+    # Falls back to Resend's shared test address for local/staging use.
+    from_addr = os.getenv('MAIL_FROM_ADDRESS', 'onboarding@resend.dev')
 
-    if not mail_user or not mail_pass:
+    if not api_key:
         raise RuntimeError(
-            "Mail credentials are not configured. "
-            "Set MAIL_USERNAME and MAIL_PASSWORD in your .env file."
+            "RESEND_API_KEY is not configured. "
+            "Sign up at resend.com, create an API key, and add it "
+            "to your Render environment variables."
         )
-
-    msg            = MIMEMultipart('alternative')
-    msg['Subject'] = 'Reset your ResiFix password'
-    msg['From']    = f'{from_name} <{mail_user}>'
-    msg['To']      = to_email
 
     # ── Plain-text version ────────────────────────────────────────────────
     text_body = f"""Hi {user_name},
@@ -175,20 +174,28 @@ DUT Group 20
 </html>
 """
 
-    msg.attach(MIMEText(text_body, 'plain'))
-    msg.attach(MIMEText(html_body, 'html'))
-
-    # Gmail SMTP with STARTTLS on port 587.
-    # Port 465 (SMTP_SSL) is blocked on Render's free tier — the socket hangs
-    # until gunicorn kills the worker with SIGTERM, which raises SystemExit
-    # (a BaseException, not caught by "except Exception") and causes a 500.
-    # Port 587 + STARTTLS is not blocked and fails fast on any real error.
-    with smtplib.SMTP('smtp.gmail.com', 587, timeout=15) as smtp:
-        smtp.ehlo()
-        smtp.starttls()
-        smtp.ehlo()
-        smtp.login(mail_user, mail_pass)
-        smtp.sendmail(mail_user, to_email, msg.as_string())
+    # ── Send via Resend HTTP API ──────────────────────────────────────────
+    # Render's free tier blocks all outbound SMTP (errno 101 — network
+    # unreachable on both port 465 and 587). HTTP is never blocked.
+    response = http_requests.post(
+        'https://api.resend.com/emails',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type':  'application/json',
+        },
+        json={
+            'from':    f'{from_name} <{from_addr}>',
+            'to':      [to_email],
+            'subject': 'Reset your ResiFix password',
+            'text':    text_body,
+            'html':    html_body,
+        },
+        timeout=15,
+    )
+    if response.status_code not in (200, 201):
+        raise RuntimeError(
+            f"Resend API error {response.status_code}: {response.text}"
+        )
 
 
 # ── LOGIN ──────────────────────────────────────────────────────────────────
@@ -340,10 +347,10 @@ def forgot_password():
                 if current_app.debug:
                     flash(f'Mail not configured: {e}', 'warning')
                     return render_template('auth/forgot_password.html')
-            except Exception as e:
+            except Exception:
                 # Mail failed to send — still show the generic message so
                 # we don't reveal whether the email exists
-                flash(f'Mail error: {e}', 'danger')
+                pass
 
         flash(
             'If that email is registered, a password reset link has been sent. '
