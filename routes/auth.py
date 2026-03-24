@@ -340,10 +340,10 @@ def forgot_password():
                 if current_app.debug:
                     flash(f'Mail not configured: {e}', 'warning')
                     return render_template('auth/forgot_password.html')
-            except Exception:
+            except Exception as e:
                 # Mail failed to send — still show the generic message so
                 # we don't reveal whether the email exists
-                pass
+                flash(f'Mail error: {e}', 'danger')
 
         flash(
             'If that email is registered, a password reset link has been sent. '
