@@ -245,12 +245,19 @@ def user_detail(user_id):
                 flash('Please enter a valid email.', 'danger')
                 return redirect(url_for('admin.user_detail', user_id=user_id))
 
-            update_profile(
-                user_id, full_name, email,
-                room_number    = room_number    if user['role'] == 'resident'   else None,
-                residence      = residence,
-                specialization = specialization if user['role'] == 'technician' else None
-            )
+            try:
+                update_profile(
+                    user_id, full_name, email,
+                    room_number    = room_number    if user['role'] == 'resident'   else None,
+                    residence      = residence,
+                    specialization = specialization if user['role'] == 'technician' else None
+                )
+            except Exception as e:
+                if 'unique' in str(e).lower() or 'duplicate' in str(e).lower():
+                    flash('That email address is already in use by another account.', 'danger')
+                else:
+                    flash('An error occurred while saving. Please try again.', 'danger')
+                return redirect(url_for('admin.user_detail', user_id=user_id))
             flash(f"{full_name}'s details updated.", 'success')
             return redirect(url_for('admin.user_detail', user_id=user_id))
 

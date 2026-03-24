@@ -200,8 +200,14 @@ def profile():
             flash('Please enter a valid email address.', 'danger')
             return redirect(url_for('technician.profile'))
 
-        # Residence and specialization are admin-managed — never update from this form
-        update_profile(tech_id, full_name, email)
+        try:
+            update_profile(tech_id, full_name, email)
+        except Exception as e:
+            if 'unique' in str(e).lower() or 'duplicate' in str(e).lower():
+                flash('That email address is already in use by another account.', 'danger')
+            else:
+                flash('An error occurred while saving. Please try again.', 'danger')
+            return redirect(url_for('technician.profile'))
         session['full_name'] = full_name
         flash('Profile updated successfully.', 'success')
         return redirect(url_for('technician.profile'))

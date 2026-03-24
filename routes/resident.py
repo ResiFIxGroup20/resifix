@@ -316,8 +316,15 @@ def profile():
             flash('Please enter a valid email address.', 'danger')
             return redirect(url_for('resident.profile'))
 
-        update_profile(user_id, full_name, email,
-                       room_number=room_number, residence=residence)
+        try:
+            update_profile(user_id, full_name, email,
+                           room_number=room_number, residence=residence)
+        except Exception as e:
+            if 'unique' in str(e).lower() or 'duplicate' in str(e).lower():
+                flash('That email address is already in use by another account.', 'danger')
+            else:
+                flash('An error occurred while saving. Please try again.', 'danger')
+            return redirect(url_for('resident.profile'))
         session['full_name']   = full_name
         session['room_number'] = room_number
         session['residence']   = residence
