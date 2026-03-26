@@ -1,6 +1,6 @@
--- ============================================================
+
 -- ResiFix — PostgreSQL Schema
--- ============================================================
+
 
 CREATE TABLE IF NOT EXISTS residences (
     id         SERIAL PRIMARY KEY,

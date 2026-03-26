@@ -41,23 +41,23 @@ def _redirect_by_role(role):
 
 def _send_reset_email(to_email, reset_link, user_name):
     """
-    Send a password-reset email via Resend HTTP API.
-    Render's free tier blocks all outbound SMTP (ports 465 and 587 both
-    return Errno 101 Network unreachable). HTTP is never blocked.
-    Raises RuntimeError if RESEND_API_KEY is not configured.
+    Send a password-reset email via Brevo HTTP API.
+    300 free emails/day — no domain verification needed — sends to any address.
+    Raises RuntimeError if BREVO_API_KEY is not configured.
     """
-    api_key   = os.getenv('RESEND_API_KEY', '').strip()
+    api_key   = os.getenv('BREVO_API_KEY', '').strip()
     from_name = os.getenv('MAIL_FROM_NAME', 'ResiFix')
-    # Resend requires a verified sender domain in production.
-    # Use MAIL_FROM_ADDRESS env var (e.g. noreply@yourdomain.com).
-    # Falls back to Resend's shared test address for local/staging use.
-    from_addr = os.getenv('MAIL_FROM_ADDRESS', 'onboarding@resend.dev')
+    from_addr = os.getenv('MAIL_FROM_ADDRESS', '').strip()
 
     if not api_key:
         raise RuntimeError(
-            "RESEND_API_KEY is not configured. "
-            "Sign up at resend.com, create an API key, and add it "
-            "to your Render environment variables."
+            "BREVO_API_KEY is not configured. "
+            "Add it to your Render environment variables."
+        )
+    if not from_addr:
+        raise RuntimeError(
+            "MAIL_FROM_ADDRESS is not configured. "
+            "Set it to the sender email you verified in Brevo."
         )
 
     # ── Plain-text version ────────────────────────────────────────────────
@@ -174,27 +174,26 @@ DUT Group 20
 </html>
 """
 
-    # ── Send via Resend HTTP API ──────────────────────────────────────────
-    # Render's free tier blocks all outbound SMTP (errno 101 — network
-    # unreachable on both port 465 and 587). HTTP is never blocked.
+    # ── Send via Brevo HTTP API ───────────────────────────────────────────
+    # 300 free emails/day, no domain restriction, no SMTP port issues.
     response = http_requests.post(
-        'https://api.resend.com/emails',
+        'https://api.brevo.com/v3/smtp/email',
         headers={
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type':  'application/json',
+            'api-key':      api_key,
+            'Content-Type': 'application/json',
         },
         json={
-            'from':    f'{from_name} <{from_addr}>',
-            'to':      [to_email],
-            'subject': 'Reset your ResiFix password',
-            'text':    text_body,
-            'html':    html_body,
+            'sender':      {'name': from_name, 'email': from_addr},
+            'to':          [{'email': to_email}],
+            'subject':     'Reset your ResiFix password',
+            'textContent': text_body,
+            'htmlContent': html_body,
         },
         timeout=15,
     )
     if response.status_code not in (200, 201):
         raise RuntimeError(
-            f"Resend API error {response.status_code}: {response.text}"
+            f"Brevo API error {response.status_code}: {response.text}"
         )
 
 

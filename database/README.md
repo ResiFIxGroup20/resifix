@@ -3,7 +3,7 @@
 
 ---
 
-## How to Initialize the Database( this was created and added to help with work flow when online)
+## How to Initialize the Database( this was created and added to help with work flow when working on teams online)
 
 Run this **once** after cloning the repo:
 ```bash

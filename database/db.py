@@ -1,8 +1,8 @@
-# ============================================================
+
 # RESIFIX — DATABASE LAYER
 # Supports both PostgreSQL (Render/production) and
 # SQLite (local dev) depending on DATABASE_URL env var.
-# ============================================================
+
 
 import os
 import uuid
