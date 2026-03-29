@@ -259,13 +259,54 @@ function appendMessage(role, text) {
 function appendSubmitShortcut() {
     const c   = document.getElementById('chatMessages');
     const div = document.createElement('div');
-    div.style.cssText = 'display:flex; justify-content:flex-start; padding-left:4px;';
-    div.innerHTML = `<a href="/request/new" style="display:inline-flex;align-items:center;gap:6px;
-        background:var(--accent);color:#fff;border-radius:20px;padding:7px 14px;
-        font-size:12px;font-weight:600;text-decoration:none;margin-top:4px;">
-        <i class="bi bi-plus-circle-fill"></i> Submit a Request</a>`;
+    div.style.cssText = 'display:flex; flex-direction:column; gap:6px; padding-left:4px; margin-top:6px;';
+    div.innerHTML = `
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button onclick="createRequestFromChat()" style="display:inline-flex;align-items:center;gap:6px;
+                background:var(--accent);color:#fff;border:none;border-radius:20px;padding:7px 14px;
+                font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font);">
+                <i class="bi bi-magic"></i> Auto-fill Request Form
+            </button>
+            <a href="/request/new" style="display:inline-flex;align-items:center;gap:6px;
+                background:var(--bg-3);color:var(--text-muted);border:1px solid var(--border-strong);
+                border-radius:20px;padding:7px 14px;font-size:12px;font-weight:600;text-decoration:none;">
+                <i class="bi bi-pencil-square"></i> Fill manually
+            </a>
+        </div>
+        <div id="suggestStatus" style="font-size:11px; color:var(--text-faint); display:none; padding-left:4px;"></div>`;
     c.appendChild(div);
     scrollToBottom();
+}
+
+async function createRequestFromChat() {
+    // Grab the last user message as the description source
+    const lastUserMsg = [...chatHistory].reverse().find(m => m.role === 'user');
+    if (!lastUserMsg) return;
+
+    const statusEl = document.getElementById('suggestStatus');
+    if (statusEl) { statusEl.style.display = 'block'; statusEl.textContent = '✨ Analysing your issue…'; }
+
+    try {
+        const res = await fetch('/api/groq-suggest', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ text: lastUserMsg.content }),
+        });
+        if (!res.ok) throw new Error('API error');
+        const s = await res.json();
+        if (s.error) throw new Error(s.error);
+
+        // Build URL with pre-filled params and navigate
+        const params = new URLSearchParams({
+            ai_title:       s.title       || '',
+            ai_category:    s.category    || '',
+            ai_priority:    s.priority    || '',
+            ai_description: s.description || '',
+        });
+        window.location.href = `/request/new?${params.toString()}`;
+    } catch(e) {
+        if (statusEl) { statusEl.textContent = '⚠️ Could not analyse. Please fill the form manually.'; }
+    }
 }
 
 function showTyping() {

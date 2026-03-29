@@ -381,6 +381,23 @@ Priority levels:
 
 Keep responses short, friendly and practical. Use simple language. You can use emojis. Always end with either a suggestion to submit a request or a self-fix tip."""
 
+_GROQ_SUGGEST_SYSTEM = """You are a maintenance request form assistant for ResiFix, a university hostel system at DUT in South Africa.
+
+Given a student's casual description of a maintenance problem, extract and return ONLY a JSON object with these exact fields:
+- title: short, professional title (max 10 words)
+- category: one of exactly: plumbing, electrical, furniture, appliance, internet, cleaning, security, other
+- priority: one of exactly: low, medium, high, critical
+- description: a clear, professional 2-3 sentence description suitable for a technician
+
+Priority guide:
+- low: cosmetic, minor inconvenience
+- medium: functional problem, not urgent
+- high: affects daily life significantly
+- critical: emergency (flooding, no power, safety risk, security breach)
+
+Respond ONLY with valid JSON. No explanation, no markdown, no code fences. Example:
+{"title":"Faulty light fitting in bathroom","category":"electrical","priority":"medium","description":"The light fitting in the bathroom has stopped working. The switch appears functional but the bulb does not illuminate. Technician should check the fitting and replace if necessary."}"""
+
 @resident.route('/api/groq-chat', methods=['POST'])
 @login_required
 def groq_chat():
@@ -407,5 +424,53 @@ def groq_chat():
             timeout=30,
         )
         return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# ── GROQ AI SUGGEST — converts chat message into form fields ───────────────
+
+@resident.route('/api/groq-suggest', methods=['POST'])
+@login_required
+def groq_suggest():
+    groq_key = os.getenv('GROQ_API_KEY', '').strip()
+    if not groq_key:
+        return jsonify({'error': 'AI assistant is not configured.'}), 503
+
+    data = request.get_json(force=True, silent=True) or {}
+    text = data.get('text', '').strip()
+    if not text:
+        return jsonify({'error': 'No text provided.'}), 400
+
+    try:
+        resp = http_requests.post(
+            'https://api.groq.com/openai/v1/chat/completions',
+            headers={
+                'Authorization': f'Bearer {groq_key}',
+                'Content-Type':  'application/json',
+            },
+            json={
+                'model':       'llama-3.1-8b-instant',
+                'max_tokens':  300,
+                'temperature': 0.2,
+                'messages': [
+                    {'role': 'system', 'content': _GROQ_SUGGEST_SYSTEM},
+                    {'role': 'user',   'content': text},
+                ],
+            },
+            timeout=30,
+        )
+        if not resp.ok:
+            return jsonify({'error': f'Groq error {resp.status_code}'}), 500
+
+        raw = resp.json().get('choices', [{}])[0].get('message', {}).get('content', '{}')
+        # Strip any accidental markdown fences
+        raw = raw.strip().lstrip('`').rstrip('`')
+        if raw.startswith('json'):
+            raw = raw[4:].strip()
+
+        import json as _json
+        suggestion = _json.loads(raw)
+        return jsonify(suggestion), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
